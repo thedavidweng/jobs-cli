@@ -19,14 +19,23 @@ func TestInspectExtractsJSONLDAndRequiresBrowser(t *testing.T) {
 		if r.URL.String() != "https://careers.example.com/job/1" {
 			t.Fatal(r.URL)
 		}
-		body := `<html><script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","title":"Engineer","description":"Build systems","datePosted":"2026-09-25","jobLocation":{"address":{"addressLocality":"Austin","addressRegion":"TX","addressCountry":"US"}}}</script></html>`
+		body := `<html><script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","title":"Engineer","description":"Build systems","identifier":"req-42","datePosted":"2026-09-25","jobLocation":{"address":{"addressLocality":"Austin","addressRegion":"TX","addressCountry":"US"}}}</script></html>`
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{"Content-Type": []string{"text/html"}}}, nil
 	})}
 	provider := NewProvider(client)
 	req := &domain.InspectRequest{Target: domain.ApplicationTarget{URL: "https://careers.example.com/job/1", Provider: domain.ProviderICIMS}}
 	inspection, err := provider.Inspect(context.Background(), req)
-	if err != nil || req.Job.Title != "Engineer" || req.Job.Description != "Build systems" || !inspection.Capabilities.BrowserRequired || inspection.Capabilities.NativeSubmit {
-		t.Fatalf("inspection=%+v job=%+v err=%v", inspection, req.Job, err)
+	if err != nil {
+		t.Fatalf("inspect err = %v", err)
+	}
+	if inspection.Application.ProviderJobID != "req-42" {
+		t.Fatalf("provider job id = %q, want req-42 from JSON-LD identifier", inspection.Application.ProviderJobID)
+	}
+	if !inspection.Capabilities.BrowserRequired || inspection.Capabilities.NativeSubmit {
+		t.Fatalf("capabilities = %#v, want browser required without native submit", inspection.Capabilities)
+	}
+	if req.Job != (domain.Job{}) {
+		t.Fatalf("inspect must not mutate the request job: %+v", req.Job)
 	}
 }
 

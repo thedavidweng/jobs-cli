@@ -10,7 +10,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/thedavidweng/jobs-cli/internal/httpclient"
 
 	"golang.org/x/net/html"
 
@@ -171,7 +172,7 @@ func partition(start, cards int, jobs []domain.Job) *domain.SearchPartition {
 func statusError(resp *http.Response) *joberrors.Error {
 	switch resp.StatusCode {
 	case http.StatusTooManyRequests:
-		return joberrors.NewWithRetryAfter(joberrors.RateLimited, "LinkedIn Guest rate limited the request", joberrors.CatNetwork, true, retryAfter(resp), nil)
+		return joberrors.NewWithRetryAfter(joberrors.RateLimited, "LinkedIn Guest rate limited the request", joberrors.CatNetwork, true, httpclient.RetryAfter(resp, 0), nil)
 	case http.StatusUnauthorized, http.StatusForbidden:
 		return joberrors.New(joberrors.APIAccessForbidden, "LinkedIn Guest denied the anonymous request", joberrors.CatAPI, false, nil)
 	}
@@ -180,25 +181,6 @@ func statusError(resp *http.Response) *joberrors.Error {
 		return joberrors.New(joberrors.APIError, message, joberrors.CatAPI, true, nil)
 	}
 	return joberrors.New(joberrors.APIError, message, joberrors.CatAPI, false, nil)
-}
-
-func retryAfter(resp *http.Response) time.Duration {
-	if resp == nil {
-		return 0
-	}
-	value := resp.Header.Get("Retry-After")
-	if value == "" {
-		return 0
-	}
-	if seconds, err := strconv.Atoi(value); err == nil && seconds > 0 {
-		return time.Duration(seconds) * time.Second
-	}
-	if when, err := http.ParseTime(value); err == nil {
-		if d := time.Until(when); d > 0 {
-			return d
-		}
-	}
-	return 0
 }
 
 func transportError(err error) *joberrors.Error {

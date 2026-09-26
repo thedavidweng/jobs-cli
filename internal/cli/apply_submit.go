@@ -57,25 +57,25 @@ func (a *App) runApplySubmit(cmd *cobra.Command, f *applySubmitFlags) error {
 		return safety.ReadOnlyError()
 	}
 
+	caps := provider.Capabilities()
+	if !caps.NativeSubmit {
+		plan := submitPlan(&prepared, "")
+		if a.dryRun {
+			if a.jsonMode {
+				return a.emit(result{Data: plan})
+			}
+			a.renderer().RenderPlan(plan)
+			return nil
+		}
+		return unsupportedSubmitError(&prepared, caps)
+	}
+
 	inspection, ierr := provider.Inspect(ctx, &domain.InspectRequest{Job: job, Target: prepared.Application})
 	if ierr != nil {
 		return joberrors.From(ierr)
 	}
 
-	plan := safety.NewPlan("apply.submit", safety.Mutation{
-		Action:     "submit_application",
-		Target:     prepared.Application.URL,
-		Provider:   string(prepared.Provider),
-		ResourceID: prepared.JobID,
-		Details: map[string]any{
-			"job_id":             prepared.JobID,
-			"artifact_version":   prepared.ArtifactVersion,
-			"fingerprint":        prepared.Fingerprint,
-			"remote_fingerprint": inspection.Fingerprint,
-			"attachments":        len(prepared.Attachments),
-			"answers":            len(prepared.Answers),
-		},
-	})
+	plan := submitPlan(&prepared, inspection.Fingerprint)
 
 	if a.dryRun {
 		if a.jsonMode {
@@ -124,4 +124,45 @@ func sourceFromJobID(jobID string) domain.Source {
 		return ""
 	}
 	return source
+}
+
+func submitPlan(prepared *domain.ApplicationArtifact, remoteFingerprint string) safety.Plan {
+	details := map[string]any{
+		"job_id":           prepared.JobID,
+		"artifact_version": prepared.ArtifactVersion,
+		"fingerprint":      prepared.Fingerprint,
+		"attachments":      len(prepared.Attachments),
+		"answers":          len(prepared.Answers),
+	}
+	if remoteFingerprint != "" {
+		details["remote_fingerprint"] = remoteFingerprint
+	}
+	return safety.Plan{
+		Command: "apply.submit",
+		DryRun:  true,
+		PlannedMutations: []safety.Mutation{{
+			Action:     "submit_application",
+			Target:     prepared.Application.URL,
+			Provider:   string(prepared.Provider),
+			ResourceID: prepared.JobID,
+			Details:    details,
+		}},
+	}
+}
+
+func unsupportedSubmitError(prepared *domain.ApplicationArtifact, caps domain.Capabilities) *joberrors.Error {
+	switch {
+	case prepared.Provider == domain.ProviderLinkedIn:
+		return joberrors.New(joberrors.LinkedInEasyApplyUnverified,
+			"Easy Apply submission is disabled until the Voyager implementation is verified with a controlled live session; apply in a browser at "+prepared.Application.URL,
+			joberrors.CatAPI, false, nil)
+	case caps.BrowserRequired:
+		return joberrors.New(joberrors.BrowserRequired,
+			"native submission is not available for "+string(prepared.Provider)+"; apply in a browser at "+prepared.Application.URL,
+			joberrors.CatAPI, false, nil)
+	default:
+		return joberrors.New(joberrors.NativeApplyUnsupported,
+			"no native application implementation exists for "+string(prepared.Provider),
+			joberrors.CatAPI, false, nil)
+	}
 }

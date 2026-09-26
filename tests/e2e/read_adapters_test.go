@@ -26,7 +26,7 @@ func TestLeverTargetThroughApplyInspectCommand(t *testing.T) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 	}
 	doc := decodeOne(t, stdout.String())
-	if doc.Error == nil || doc.Error.Code != "NATIVE_APPLY_UNSUPPORTED" {
+	if doc.Error == nil || doc.Error.Code != "BROWSER_REQUIRED" {
 		t.Fatalf("envelope=%+v", doc)
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/thedavidweng/jobs-cli/internal/httpclient"
 )
 
 const maxRedirects = 5
@@ -67,7 +69,52 @@ func (r *Resolver) httpClient() *http.Client {
 	cloned.CheckRedirect = func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
+	if cloned.Transport == nil {
+		cloned.Transport = http.DefaultTransport
+	}
+	cloned.Transport = r.guardTransport(cloned.Transport)
 	return &cloned
+}
+
+func (r *Resolver) guardTransport(rt http.RoundTripper) http.RoundTripper {
+	switch t := rt.(type) {
+	case *http.Transport:
+		guarded := t.Clone()
+		guarded.DialContext = r.guardedDialContext()
+		return guarded
+	case *httpclient.Transport:
+		copied := *t
+		copied.Base = r.guardTransport(t.Base)
+		return &copied
+	default:
+		return rt
+	}
+}
+
+func (r *Resolver) guardedDialContext() func(context.Context, string, string) (net.Conn, error) {
+	var dialer net.Dialer
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
+		}
+		if ip := net.ParseIP(host); ip != nil {
+			if blockedIP(ip) {
+				return nil, resolutionError("refusing to dial private, link-local, or metadata address "+host, nil)
+			}
+			return dialer.DialContext(ctx, network, addr)
+		}
+		ips, lerr := r.lookupIP(ctx, host)
+		if lerr != nil || len(ips) == 0 {
+			return dialer.DialContext(ctx, network, addr)
+		}
+		for _, ip := range ips {
+			if blockedIP(ip) {
+				return nil, resolutionError("refusing to dial private, link-local, or metadata address "+ip.String()+" for host "+host, nil)
+			}
+		}
+		return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
+	}
 }
 
 func (r *Resolver) checkReachableHost(ctx context.Context, u *url.URL) error {

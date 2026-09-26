@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/thedavidweng/jobs-cli/internal/domain"
@@ -138,7 +139,7 @@ func Validate(a *domain.ApplicationArtifact, inspection *domain.ApplicationInspe
 	var problems []string
 	attachmentKinds := attachmentKinds(a)
 	for _, field := range inspection.Fields {
-		if isFileField(field) {
+		if IsFileField(field) {
 			if field.Required {
 				if _, ok := attachmentKinds[strings.ToLower(field.Name)]; !ok {
 					problems = append(problems, fieldLabel(field))
@@ -266,7 +267,7 @@ func attachmentKinds(a *domain.ApplicationArtifact) map[string]bool {
 	return kinds
 }
 
-func isFileField(field domain.ApplicationField) bool {
+func IsFileField(field domain.ApplicationField) bool {
 	if strings.EqualFold(strings.TrimSpace(field.Type), "file") {
 		return true
 	}
@@ -275,6 +276,25 @@ func isFileField(field domain.ApplicationField) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func ContentTypeFor(path string) string {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".pdf":
+		return "application/pdf"
+	case ".doc":
+		return "application/msword"
+	case ".docx":
+		return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	case ".txt":
+		return "text/plain"
+	case ".md":
+		return "text/markdown"
+	case ".rtf":
+		return "application/rtf"
+	default:
+		return "application/octet-stream"
 	}
 }
 

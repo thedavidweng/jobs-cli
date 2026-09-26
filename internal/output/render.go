@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+
+	"github.com/thedavidweng/jobs-cli/internal/safety"
 )
 
 type Renderer struct {
@@ -43,11 +46,36 @@ func (r *Renderer) RenderError(env *ErrorEnvelope) {
 	fmt.Fprintf(r.Stderr, "Error: %s\n", env.Error.Message)
 }
 
-func (r *Renderer) RenderPlan(plan any) {
+func (r *Renderer) RenderPlan(plan safety.Plan) {
 	if r.JSON {
 		return
 	}
-	fmt.Fprintln(r.Stdout, r.marshal(plan))
+	fmt.Fprintf(r.Stdout, "Dry run (%s): no changes were made.\n", plan.Command)
+	if len(plan.PlannedMutations) == 0 {
+		fmt.Fprintln(r.Stdout, "  no mutations planned")
+		return
+	}
+	fmt.Fprintf(r.Stdout, "Would perform %d mutation(s):\n", len(plan.PlannedMutations))
+	for i, mutation := range plan.PlannedMutations {
+		fmt.Fprintf(r.Stdout, "  [%d] %s\n", i+1, mutation.Action)
+		if mutation.Target != "" {
+			fmt.Fprintf(r.Stdout, "      target:   %s\n", mutation.Target)
+		}
+		if mutation.Provider != "" {
+			fmt.Fprintf(r.Stdout, "      provider: %s\n", mutation.Provider)
+		}
+		if mutation.ResourceID != "" {
+			fmt.Fprintf(r.Stdout, "      resource: %s\n", mutation.ResourceID)
+		}
+		keys := make([]string, 0, len(mutation.Details))
+		for key := range mutation.Details {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			fmt.Fprintf(r.Stdout, "      %s: %v\n", key, mutation.Details[key])
+		}
+	}
 }
 
 func (r *Renderer) PrintDiagnostic(msg string) {

@@ -1,6 +1,16 @@
 package domain
 
+import "github.com/thedavidweng/jobs-cli/internal/errors"
+
 type ApplicationProvider string
+
+func BrowserRequiredError(provider, operation, url string) *errors.Error {
+	message := provider + " native application " + operation + " is not available; the candidate flow is browser-only"
+	if url != "" {
+		message += ": " + url
+	}
+	return errors.New(errors.BrowserRequired, message, errors.CatAPI, false, nil)
+}
 
 const (
 	ProviderGreenhouse      ApplicationProvider = "greenhouse"

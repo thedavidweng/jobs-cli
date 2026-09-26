@@ -288,7 +288,10 @@ func TestLinkedInEasyApplySubmitIsGatedAsUnverified(t *testing.T) {
 	submitOut, _, code := h.run("--json", "apply", "submit", "--artifact", "-", "--confirm")
 	doc := decodeEnvelope(t, submitOut)
 	requireCode(t, &doc, "LINKEDIN_EASY_APPLY_UNVERIFIED", 6, code)
-	if provider.SubmitCalls != 1 {
-		t.Fatalf("submit calls = %d, want 1 (gating happens at the provider boundary)", provider.SubmitCalls)
+	if provider.SubmitCalls != 0 {
+		t.Fatalf("submit calls = %d, want 0 (unverified providers are rejected before submission)", provider.SubmitCalls)
+	}
+	if provider.InspectCalls != 1 {
+		t.Fatalf("inspect calls = %d, want 1 (only prepare inspected; submit must not re-inspect unverified providers)", provider.InspectCalls)
 	}
 }

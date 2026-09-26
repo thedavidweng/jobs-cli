@@ -239,7 +239,7 @@ func attachmentFromFile(kind, path string) (domain.Attachment, *joberrors.Error)
 		Kind:        kind,
 		Path:        path,
 		Filename:    filepath.Base(path),
-		ContentType: contentTypeFor(path),
+		ContentType: artifact.ContentTypeFor(path),
 		Size:        info.Size(),
 	}, nil
 }
@@ -256,23 +256,4 @@ func dedupeAttachments(attachments []domain.Attachment) []domain.Attachment {
 		out = append(out, attachment)
 	}
 	return out
-}
-
-func contentTypeFor(path string) string {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".pdf":
-		return "application/pdf"
-	case ".doc":
-		return "application/msword"
-	case ".docx":
-		return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-	case ".txt":
-		return "text/plain"
-	case ".md":
-		return "text/markdown"
-	case ".rtf":
-		return "application/rtf"
-	default:
-		return "application/octet-stream"
-	}
 }

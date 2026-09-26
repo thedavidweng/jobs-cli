@@ -14,11 +14,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/thedavidweng/jobs-cli/internal/artifact"
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	"github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/internal/httpclient"
 )
 
 const (
@@ -201,7 +201,7 @@ func (p *Provider) client() *http.Client {
 
 func writeApplication(writer *multipart.Writer, app *domain.ApplicationArtifact, fields []domain.ApplicationField, questions []domain.ApplicationQuestion, acceptsResume, acceptsCover bool) error {
 	for _, field := range fields {
-		if isFileField(field) {
+		if artifact.IsFileField(field) {
 			continue
 		}
 		value := strings.TrimSpace(app.Candidate.Value(field.Name))
@@ -264,7 +264,7 @@ func writeFilePart(writer *multipart.Writer, name string, attachment domain.Atta
 	}
 	contentType := strings.TrimSpace(attachment.ContentType)
 	if contentType == "" {
-		contentType = contentTypeFor(filename)
+		contentType = artifact.ContentTypeFor(filename)
 	}
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition", fmt.Sprintf("form-data; name=%q; filename=%q", sanitizePart(name), sanitizePart(filename)))
@@ -330,7 +330,7 @@ func responseError(resp *http.Response, operation string) error {
 	case resp.StatusCode == http.StatusNotFound:
 		return errors.New(errors.ResourceNotFound, message, errors.CatAPI, false, nil)
 	case resp.StatusCode == http.StatusTooManyRequests:
-		return errors.NewWithRetryAfter(errors.RateLimited, message, errors.CatNetwork, true, retryAfter(resp), nil)
+		return errors.NewWithRetryAfter(errors.RateLimited, message, errors.CatNetwork, true, httpclient.RetryAfter(resp, 0), nil)
 	case resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnprocessableEntity:
 		return errors.New(errors.ApplicationIncomplete, message, errors.CatValidation, false, nil)
 	case resp.StatusCode >= 500:
@@ -374,22 +374,6 @@ func errorDetail(body io.Reader) string {
 		return truncate(collapse(trimmed), errorSnippet)
 	}
 	return ""
-}
-
-func retryAfter(resp *http.Response) time.Duration {
-	value := strings.TrimSpace(resp.Header.Get("Retry-After"))
-	if value == "" {
-		return 0
-	}
-	if seconds, err := strconv.Atoi(value); err == nil {
-		return time.Duration(seconds) * time.Second
-	}
-	if when, err := http.ParseTime(value); err == nil {
-		if delay := time.Until(when); delay > 0 {
-			return delay
-		}
-	}
-	return 0
 }
 
 func boardIdentifiers(target *domain.ApplicationTarget) (token, jobID string, err error) {
@@ -520,37 +504,6 @@ func attachmentFor(app *domain.ApplicationArtifact, kind string) (domain.Attachm
 		}
 	}
 	return domain.Attachment{}, false
-}
-
-func isFileField(field domain.ApplicationField) bool {
-	if strings.EqualFold(strings.TrimSpace(field.Type), fileField) {
-		return true
-	}
-	switch strings.ToLower(strings.TrimSpace(field.Name)) {
-	case "resume", "cover_letter":
-		return true
-	default:
-		return false
-	}
-}
-
-func contentTypeFor(path string) string {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".pdf":
-		return "application/pdf"
-	case ".doc":
-		return "application/msword"
-	case ".docx":
-		return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-	case ".txt":
-		return "text/plain"
-	case ".md":
-		return "text/markdown"
-	case ".rtf":
-		return "application/rtf"
-	default:
-		return "application/octet-stream"
-	}
 }
 
 func sanitizePart(value string) string {

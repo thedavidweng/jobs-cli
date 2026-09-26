@@ -31,7 +31,6 @@ go to stderr.
     "message": "Human readable message",
     "category": "validation",
     "retryable": false,
-    "details": { }
   },
   "meta": { ... }
 }
@@ -54,7 +53,7 @@ go to stderr.
   "description": "...",
   "posted_date": "2026-09-20",
   "compensation": {
-    "amounts": [{ "kind": "base", "min": 100000, "max": 140000 }],
+    "amounts": [{ "kind": "range", "min": 100000, "max": 140000 }],
     "currency": "CAD",
     "interval": "year",
     "summary": "CA$100k-140k a year"

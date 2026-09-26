@@ -105,6 +105,14 @@ func (a *App) runSearch(cmd *cobra.Command, f *searchFlags) error {
 		return firstError(failures)
 	}
 
+	if !a.full {
+		for i := range partitions {
+			for j := range partitions[i].Jobs {
+				partitions[i].Jobs[j].Diagnostics = nil
+			}
+		}
+	}
+
 	data := domain.SearchResult{Partitions: partitions}
 	if !a.jsonMode {
 		a.printSearch(data)

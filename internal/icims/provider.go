@@ -20,8 +20,12 @@ func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{Inspect: true, BrowserRequired: true}
 }
 
-func (p *Provider) Submit(_ context.Context, _ *domain.SubmitRequest) (*domain.SubmissionResult, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "icims native application submission is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Submit(_ context.Context, req *domain.SubmitRequest) (*domain.SubmissionResult, error) {
+	var url string
+	if req != nil {
+		url = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("icims", "submission", url)
 }
 
 func (p *Provider) Inspect(ctx context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
@@ -53,22 +57,11 @@ func (p *Provider) Inspect(ctx context.Context, req *domain.InspectRequest) (*do
 	if err != nil {
 		return nil, errors.New(errors.APISchemaChanged, "invalid iCIMS JSON-LD", errors.CatAPI, false, err)
 	}
-	if found {
-		if req.Job.Title == "" {
-			req.Job.Title = stringValue(posting["title"])
-		}
-		if req.Job.Description == "" {
-			req.Job.Description = stringValue(posting["description"])
-		}
-		if req.Job.Location == "" {
-			req.Job.Location = location(posting["jobLocation"])
-		}
-		if req.Job.PostedDate == "" {
-			req.Job.PostedDate = stringValue(posting["datePosted"])
-		}
-		inspection.Application.URL = target.URL
+	if found && target.ProviderJobID == "" {
+		target.ProviderJobID = stringValue(posting["identifier"])
 	}
-	inspection.Fingerprint = domain.Fingerprint(&inspection.Application, inspection.Fields, inspection.Questions)
+	inspection.Application = target
+	inspection.Fingerprint = domain.Fingerprint(&target, inspection.Fields, inspection.Questions)
 	return inspection, nil
 }
 
@@ -159,18 +152,3 @@ func hasType(value any, want string) bool {
 	return false
 }
 func stringValue(value any) string { s, _ := value.(string); return s }
-func location(value any) string {
-	switch v := value.(type) {
-	case map[string]any:
-		if a, ok := v["address"].(map[string]any); ok {
-			return strings.Trim(strings.Join([]string{stringValue(a["addressLocality"]), stringValue(a["addressRegion"]), stringValue(a["addressCountry"])}, ", "), ", ")
-		}
-	case []any:
-		for _, x := range v {
-			if got := location(x); got != "" {
-				return got
-			}
-		}
-	}
-	return ""
-}

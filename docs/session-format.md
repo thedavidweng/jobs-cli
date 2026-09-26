@@ -59,7 +59,8 @@ header matching the unquoted `JSESSIONID`. A session with `li_at` but no
 ## Consumers
 
 - `internal/config` owns read/write/permission enforcement (`LinkedInSession`,
-  `SessionStore`, `LoadSession`, `SaveSession`, `RemoveSession`, `SessionStatus`).
+  `SessionStore.Load`, `SessionStore.Save`, `SessionStore.Remove`, and
+  `SessionStore.Status`).
 - `internal/cookieimport` produces a `LinkedInSession` from a browser cookie store.
 - `internal/linkedin/session` orchestrates guided login/logout for the `auth` commands.
 - `internal/linkedin/voyager` consumes the session for authenticated search/detail.

@@ -97,7 +97,7 @@ func TestApplySubmitConsumesArtifactAndRoutesToProvider(t *testing.T) {
 	if code != 6 {
 		t.Fatalf("exit = %d, want 6\n%s", code, stdout)
 	}
-	if doc := decodeOne(t, stdout); doc.Error == nil || doc.Error.Code != "NATIVE_APPLY_UNSUPPORTED" {
+	if doc := decodeOne(t, stdout); doc.Error == nil || doc.Error.Code != "BROWSER_REQUIRED" {
 		t.Fatalf("envelope = %+v", doc)
 	}
 }
