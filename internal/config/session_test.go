@@ -3,6 +3,7 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/thedavidweng/jobs-cli/internal/config"
@@ -24,14 +25,14 @@ func TestSessionFilePermissionsAndRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat sessions dir: %v", err)
 	}
-	if perm := dirInfo.Mode().Perm(); perm != 0o700 {
+	if perm := dirInfo.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o700 {
 		t.Fatalf("sessions dir mode = %04o, want 0700", perm)
 	}
 	fileInfo, err := os.Stat(filepath.Join(sessionsDir, "default.json"))
 	if err != nil {
 		t.Fatalf("stat session file: %v", err)
 	}
-	if perm := fileInfo.Mode().Perm(); perm != 0o600 {
+	if perm := fileInfo.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Fatalf("session file mode = %04o, want 0600", perm)
 	}
 
