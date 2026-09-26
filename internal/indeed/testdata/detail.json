@@ -1,0 +1,83 @@
+{
+  "data": {
+    "jobData": {
+      "results": [
+        {
+          "job": {
+            "key": "517ca3fd71acddc9",
+            "title": "Senior Backend Engineer",
+            "datePublished": 1790435045000,
+            "description": {
+              "html": "<div><p>Own the payments platform end to end.</p><ul><li>Go</li><li>Postgres</li><li>Kubernetes</li></ul></div>"
+            },
+            "employer": {
+              "name": "Serve Robotics",
+              "relativeCompanyPageUrl": "/cmp/Serve-Robotics",
+              "dossier": {
+                "employerDetails": {
+                  "addresses": [
+                    "2220 W 14th St, Vancouver, BC"
+                  ],
+                  "industry": "Iv1TransportationEquipmentManufacturing",
+                  "employeesLocalizedLabel": "51-200 employees",
+                  "revenueLocalizedLabel": "$10M-$50M",
+                  "briefDescription": "Autonomous sidewalk delivery robots.",
+                  "ceoName": "Ali Kashani",
+                  "ceoPhotoUrl": null
+                },
+                "images": {
+                  "headerImageUrl": null,
+                  "squareLogoUrl": "https://d2q79k112iqucb.cloudfront.net/logo/serverobotics.png"
+                },
+                "links": {
+                  "corporateWebsite": "https://www.serverobotics.com"
+                }
+              }
+            },
+            "location": {
+              "countryName": "Canada",
+              "countryCode": "CA",
+              "admin1Code": "BC",
+              "city": "Vancouver",
+              "formatted": {
+                "short": "Vancouver, BC",
+                "long": "Vancouver, BC  V5K 0A4"
+              }
+            },
+            "compensation": {
+              "estimated": null,
+              "baseSalary": {
+                "unitOfWork": "YEAR",
+                "range": {
+                  "min": 180000,
+                  "max": 220000
+                }
+              },
+              "currencyCode": "CAD"
+            },
+            "attributes": [
+              {
+                "key": "CF3CP",
+                "label": "Full-time"
+              }
+            ],
+            "recruit": {
+              "viewJobUrl": "https://jobs.ashbyhq.com/serverobotics/517ca3fd71acddc9",
+              "detailedSalary": "$180,000 - $220,000 a year"
+            }
+          }
+        },
+        {
+          "job": {
+            "key": "ffffffffffffffff",
+            "title": "Unrelated Job From The Same Batch",
+            "employer": {
+              "name": "Other Co"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "errors": null
+}

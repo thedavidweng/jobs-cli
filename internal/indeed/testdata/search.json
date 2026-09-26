@@ -1,0 +1,148 @@
+{
+  "data": {
+    "jobSearch": {
+      "pageInfo": {
+        "nextCursor": "eyJvZmZzZXQiOjI1fQ"
+      },
+      "results": [
+        {
+          "trackingKey": "1a2b3c4d5e6f7g8h9",
+          "job": {
+            "key": "b8ef297959c26ac5",
+            "title": "Sr. Embedded Software Engineer, Robotics Platform",
+            "datePublished": 1790435045000,
+            "employer": {
+              "name": "Serve Robotics"
+            },
+            "location": {
+              "countryName": "Canada",
+              "countryCode": "CA",
+              "admin1Code": "BC",
+              "city": "Vancouver",
+              "postalCode": null,
+              "streetAddress": null,
+              "formatted": {
+                "short": "Vancouver, BC",
+                "long": "Vancouver, BC  V5K 0A4"
+              }
+            },
+            "compensation": {
+              "estimated": null,
+              "baseSalary": {
+                "unitOfWork": "YEAR",
+                "range": {
+                  "min": 167800,
+                  "max": 204000
+                }
+              },
+              "currencyCode": "CAD"
+            },
+            "attributes": [
+              {
+                "key": "CF3CP",
+                "label": "Full-time"
+              },
+              {
+                "key": "DSQF7",
+                "label": "Remote"
+              }
+            ],
+            "recruit": {
+              "viewJobUrl": "https://jobs.ashbyhq.com/serverobotics/0b9f3986-9ae6-4361-85b5-2e1edc6e10e2?utm_source=j20ZWL4oeG",
+              "detailedSalary": "$167,800 - $204,000 a year",
+              "workSchedule": null
+            }
+          }
+        },
+        {
+          "trackingKey": "2b3c4d5e6f7g8h9i0",
+          "job": {
+            "key": "125ed8a0aaccc025",
+            "title": "Staff Software Engineer (Architecture)",
+            "datePublished": 1790328600000,
+            "employer": null,
+            "location": {
+              "countryName": "Canada",
+              "countryCode": "CA",
+              "admin1Code": "BC",
+              "city": "Vancouver",
+              "formatted": {
+                "short": null,
+                "long": "Vancouver, BC (Hybrid)"
+              }
+            },
+            "compensation": {
+              "estimated": null,
+              "baseSalary": {
+                "unitOfWork": "YEAR",
+                "range": {
+                  "value": 210000
+                }
+              },
+              "currencyCode": "CAD"
+            },
+            "attributes": [
+              {
+                "key": "CF3CP",
+                "label": "Full-time"
+              },
+              {
+                "key": "HJ3PZ",
+                "label": "Hybrid"
+              }
+            ],
+            "recruit": {
+              "viewJobUrl": "https://grnh.se/672hg3zi7us",
+              "detailedSalary": "$210,000 a year"
+            }
+          }
+        },
+        {
+          "trackingKey": "3c4d5e6f7g8h9i0j1",
+          "job": {
+            "key": "c3c6df8ab43068f9",
+            "title": "DevOps Engineer, Evisort AI",
+            "datePublished": null,
+            "employer": {
+              "name": "Workday"
+            },
+            "location": {
+              "countryCode": "CA",
+              "admin1Code": "BC",
+              "city": "Vancouver",
+              "formatted": {
+                "short": "Vancouver, BC",
+                "long": "Vancouver, BC"
+              }
+            },
+            "compensation": {
+              "estimated": {
+                "currencyCode": "USD",
+                "baseSalary": {
+                  "unitOfWork": "HOUR",
+                  "range": {
+                    "min": 56.5,
+                    "max": 84
+                  }
+                }
+              },
+              "baseSalary": null,
+              "currencyCode": null
+            },
+            "attributes": [
+              {
+                "key": "NJXCK",
+                "label": "Contract"
+              }
+            ],
+            "recruit": {
+              "viewJobUrl": "https://workday.wd5.myworkdayjobs.com/en-US/Workday/job/Canada-BC-Vancouver/DevOps-Engineer--Evisort-AI_JR-0110243",
+              "detailedSalary": null
+            }
+          }
+        }
+      ]
+    }
+  },
+  "errors": null
+}
