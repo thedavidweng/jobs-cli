@@ -4,30 +4,31 @@ import (
 	"context"
 
 	"github.com/thedavidweng/jobs-cli/internal/config"
+	"github.com/thedavidweng/jobs-cli/internal/cookieimport"
 	"github.com/thedavidweng/jobs-cli/internal/errors"
 )
 
-type Importer interface {
-	Import(ctx context.Context, browser string) (*config.LinkedInSession, error)
-}
-
 type Service struct {
 	Store    *config.SessionStore
-	Importer Importer
+	Importer cookieimport.CookieReader
 }
 
-func New(store *config.SessionStore, importer Importer) *Service {
+func New(store *config.SessionStore, importer cookieimport.CookieReader) *Service {
 	return &Service{Store: store, Importer: importer}
 }
 
 func (s *Service) Login(ctx context.Context, browser string) (*config.LinkedInSession, error) {
-	if s.Importer == nil {
-		return nil, errors.New(errors.NotImplemented, "guided LinkedIn session import is not implemented yet", errors.CatInternal, false, nil)
+	if s == nil || s.Importer == nil || s.Store == nil {
+		return nil, errors.New(errors.InternalError, "LinkedIn session storage is unavailable", errors.CatInternal, false, nil)
 	}
 	session, err := s.Importer.Import(ctx, browser)
 	if err != nil {
 		return nil, err
 	}
+	if session == nil || !session.Complete() {
+		return nil, errors.New(errors.LinkedInSessionRequired, "LinkedIn session import did not find both li_at and JSESSIONID cookies", errors.CatAuth, false, nil)
+	}
+	session.Profile = s.Store.Profile()
 	if err := s.Store.Save(session); err != nil {
 		return nil, errors.New(errors.InternalError, err.Error(), errors.CatInternal, false, err)
 	}
