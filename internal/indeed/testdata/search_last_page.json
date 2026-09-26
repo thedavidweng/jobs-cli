@@ -1,0 +1,37 @@
+{
+  "data": {
+    "jobSearch": {
+      "pageInfo": {
+        "nextCursor": null
+      },
+      "results": [
+        {
+          "trackingKey": "9z8y7x6w5v4u3t2s1",
+          "job": {
+            "key": "eeee1111f222f333",
+            "title": "Platform Engineer",
+            "datePublished": 1790248500000,
+            "employer": {
+              "name": "Acme Cloud"
+            },
+            "location": {
+              "formatted": {
+                "short": "Vancouver, BC",
+                "long": "Vancouver, BC"
+              }
+            },
+            "compensation": null,
+            "attributes": [
+              {
+                "key": "CF3CP",
+                "label": "Full-time"
+              }
+            ],
+            "recruit": null
+          }
+        }
+      ]
+    }
+  },
+  "errors": null
+}

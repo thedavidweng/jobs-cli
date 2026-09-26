@@ -1,0 +1,20 @@
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "Invalid cursor token",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ],
+      "path": [
+        "jobSearch"
+      ],
+      "extensions": {
+        "code": "BAD_USER_INPUT"
+      }
+    }
+  ]
+}
