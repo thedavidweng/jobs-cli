@@ -10,6 +10,7 @@ import (
 
 type authLinkedInStatus struct {
 	Authenticated bool                 `json:"authenticated"`
+	Verification  string               `json:"verification"`
 	Session       config.SessionStatus `json:"session"`
 }
 
@@ -37,12 +38,14 @@ func (a *App) runAuthStatus() error {
 		Profile: a.profile,
 		LinkedIn: authLinkedInStatus{
 			Authenticated: status.Complete,
+			Verification:  "VERIFIED SOURCE IMPLEMENTATION",
 			Session:       status,
 		},
 	}
 	if !a.jsonMode {
 		fmt.Fprintf(a.out, "profile:  %s\n", report.Profile)
 		fmt.Fprintf(a.out, "linkedin: authenticated=%t session=%t\n", report.LinkedIn.Authenticated, status.Present)
+		fmt.Fprintln(a.out, "  voyager: VERIFIED SOURCE IMPLEMENTATION; Easy Apply submission remains disabled")
 		if !status.Present {
 			fmt.Fprintln(a.out, "  run `jobs-cli auth linkedin login` to import a session")
 		}

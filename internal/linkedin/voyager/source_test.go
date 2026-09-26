@@ -1,0 +1,110 @@
+package voyager
+
+import (
+	"context"
+	"io"
+	"net/http"
+	"strings"
+	"testing"
+
+	"github.com/thedavidweng/jobs-cli/internal/config"
+	"github.com/thedavidweng/jobs-cli/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+)
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestEncodeVariables(t *testing.T) {
+	got, err := EncodeVariables(map[string]any{
+		"query": map[string]any{"keywords": "go developer", "urn": "urn:li:fsd_geo:1"},
+		"tags":  []string{"R", ""},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "(query:(keywords:go%20developer,urn:urn%3Ali%3Afsd_geo%3A1),tags:List(R,''))"
+	if got != want {
+		t.Fatalf("EncodeVariables() = %q, want %q", got, want)
+	}
+}
+
+func TestSearchSendsPersistedQueryAndAuthenticatedHeaders(t *testing.T) {
+	store := testStore(t)
+	var request *http.Request
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		request = req.Clone(req.Context())
+		body := `{"data":{"jobsDashJobCardsByJobSearch":{"paging":{"total":1},"elements":[{"jobCard":{"jobPostingCard":{"jobPostingTitle":"Go Developer","primaryDescription":{"text":"Acme"},"secondaryDescription":{"text":"Remote"},"jobPosting":{"entityUrn":"urn:li:fsd_jobPosting:42"}}}}]}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	source := &Source{Client: client, Sessions: store}
+	result, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "go", Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.Method != http.MethodGet || request.URL.Path != "/voyager/api/graphql" {
+		t.Fatalf("request = %s %s", request.Method, request.URL)
+	}
+	if request.URL.Query().Get("queryId") != searchQueryID || request.URL.Query().Get("queryName") != searchQueryName {
+		t.Fatalf("query = %s", request.URL.RawQuery)
+	}
+	if request.Header.Get("csrf-token") != "ajax:123" || !strings.Contains(request.Header.Get("Cookie"), "li_at=secret") {
+		t.Fatalf("authentication headers missing: %#v", request.Header)
+	}
+	if len(result.Jobs) != 1 || result.Jobs[0].SourceJobID != "42" || result.Jobs[0].Employer != "Acme" {
+		t.Fatalf("jobs = %#v", result.Jobs)
+	}
+}
+
+func TestDetailAndEasyApplyParsing(t *testing.T) {
+	store := testStore(t)
+	calls := 0
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls++
+		var body string
+		switch req.URL.Query().Get("queryId") {
+		case detailQueryID:
+			body = `{"data":{"detail":{"elements":[{"jobPostingDetailSection":[{"topCardV2":{"jobPostingCard":{"jobPostingTitle":"Engineer","primaryDescription":{"text":"Acme"},"tertiaryDescription":{"text":"Remote · 2 days ago"}}}},{"jobDescription":{"jobPosting":{"description":{"text":"Build things"}}}}]}]}}}`
+		case applyQueryID:
+			body = `{"data":{"jobsDashOnsiteApplyApplicationByJobPosting":{"elements":[{"jobSeekerApplicationDetail":{"onsiteApply":true,"resume":{"name":"resume.pdf"}}}]}}}`
+		default:
+			t.Fatalf("unexpected query: %s", req.URL.Query().Get("queryId"))
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	source := &Source{Client: client, Sessions: store}
+	job, err := source.Detail(context.Background(), &domain.DetailRequest{SourceJobID: "42"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.Title != "Engineer" || job.Description != "Build things" || job.Location != "Remote" {
+		t.Fatalf("job = %#v", job)
+	}
+	apply, err := InspectEasyApply(context.Background(), client, store, "42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !apply.Available || !apply.AcceptsResume || calls != 2 {
+		t.Fatalf("apply = %#v, calls = %d", apply, calls)
+	}
+}
+
+func TestMissingOrIncompleteSessionIsRequired(t *testing.T) {
+	source := &Source{Sessions: config.NewSessionStore(t.TempDir())}
+	_, err := source.Search(context.Background(), &domain.SearchRequest{})
+	if got := joberrors.From(err).Code; got != joberrors.LinkedInSessionRequired {
+		t.Fatalf("error code = %s", got)
+	}
+}
+
+func testStore(t *testing.T) *config.SessionStore {
+	t.Helper()
+	store := config.NewSessionStore(t.TempDir())
+	if err := store.Save(&config.LinkedInSession{Cookies: map[string]string{
+		config.CookieLiAt: "secret", config.CookieJSessionID: `"ajax:123"`,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	return store
+}
