@@ -19,11 +19,10 @@ type LinkedInProfile struct {
 }
 
 type Profile struct {
-	Timeout   time.Duration   `yaml:"timeout"`
-	ReadOnly  bool            `yaml:"read_only"`
-	Sources   []string        `yaml:"sources"`
-	UserAgent string          `yaml:"user_agent"`
-	LinkedIn  LinkedInProfile `yaml:"linkedin"`
+	Timeout  time.Duration   `yaml:"timeout"`
+	ReadOnly bool            `yaml:"read_only"`
+	Sources  []string        `yaml:"sources"`
+	LinkedIn LinkedInProfile `yaml:"linkedin"`
 }
 
 type Config struct {
@@ -102,9 +101,6 @@ func applyFile(cfg *Config, raw map[string]any) {
 		if v, ok := fields["sources"].([]any); ok {
 			prof.Sources = toStrings(v)
 		}
-		if v, ok := fields["user_agent"].(string); ok {
-			prof.UserAgent = v
-		}
 		if v, ok := fields["linkedin"].(map[string]any); ok {
 			if v, ok := v["session_file"].(string); ok {
 				prof.LinkedIn.SessionFile = v
@@ -153,9 +149,6 @@ func (c *Config) resolve() {
 		if names := splitList(v); len(names) > 0 {
 			prof.Sources = names
 		}
-	}
-	if v := os.Getenv("JOBS_USER_AGENT"); v != "" {
-		prof.UserAgent = v
 	}
 	c.Active = prof
 }

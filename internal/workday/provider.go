@@ -21,12 +21,20 @@ func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{BrowserRequired: true}
 }
 
-func (p *Provider) Inspect(context.Context, *domain.InspectRequest) (*domain.ApplicationInspection, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "workday native application inspection is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Inspect(_ context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("workday", "inspection", targetURL)
 }
 
-func (p *Provider) Submit(context.Context, *domain.SubmitRequest) (*domain.SubmissionResult, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "workday native application submission is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Submit(_ context.Context, req *domain.SubmitRequest) (*domain.SubmissionResult, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("workday", "submission", targetURL)
 }
 
 type Source struct {
@@ -68,11 +76,11 @@ func (s *Source) Search(ctx context.Context, r *domain.SearchRequest) (*domain.S
 	for i := range response.JobPostings {
 		p := &response.JobPostings[i]
 		j, err := normalizePosting(p)
-		j.SourceURL = s.base() + "/" + s.site + p.ExternalPath
-		j.ApplicationURL = j.SourceURL
 		if err != nil {
 			return nil, err
 		}
+		j.SourceURL = s.base() + "/" + s.site + p.ExternalPath
+		j.ApplicationURL = j.SourceURL
 		jobs = append(jobs, j)
 	}
 	return &domain.SearchPartition{Source: s.Name(), Jobs: jobs, Pagination: &domain.Pagination{Limit: limit, Offset: r.Offset, Total: response.Total, HasMore: r.Offset+len(jobs) < response.Total, Native: &domain.NativePagination{Kind: domain.PaginationOffset, Limit: limit, Offset: r.Offset}}}, nil

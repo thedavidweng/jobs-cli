@@ -20,6 +20,7 @@ type harness struct {
 	dir     string
 	stdin   string
 	factory func(cfg *config.Config, client *http.Client) *registry.Registry
+	base    http.RoundTripper
 	out     bytes.Buffer
 	errOut  bytes.Buffer
 }
@@ -27,6 +28,11 @@ type harness struct {
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	return &harness{t: t, dir: t.TempDir()}
+}
+
+func (h *harness) withTransport(rt http.RoundTripper) *harness {
+	h.base = rt
+	return h
 }
 
 func (h *harness) useRealRegistry() *harness {
@@ -60,6 +66,7 @@ func (h *harness) run(args ...string) (stdout, stderr string, code int) {
 		Stderr:          &h.errOut,
 		Stdin:           strings.NewReader(h.stdin),
 		ConfigDir:       h.dir,
+		BaseTransport:   h.base,
 		RegistryFactory: factory,
 	})
 	code = app.Run(args)

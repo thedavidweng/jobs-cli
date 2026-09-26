@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -39,14 +42,14 @@ permissions, active profile, configured sources, session file, and version.
 Capability reporting for sources and providers lives in 'jobs-cli sources status'.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.runDoctor(f)
+			return a.runDoctor(cmd, f)
 		},
 	}
 	cmd.Flags().BoolVar(&f.connect, "connect", false, "also run optional connectivity checks")
 	return cmd
 }
 
-func (a *App) runDoctor(f *doctorFlags) error {
+func (a *App) runDoctor(cmd *cobra.Command, f *doctorFlags) error {
 	cfg := a.config()
 	path := a.defaultConfigPath()
 	report := doctorReport{
@@ -100,7 +103,14 @@ func (a *App) runDoctor(f *doctorFlags) error {
 	add("version", true, version.GetVersion())
 
 	if f.connect {
-		add("connectivity", false, "connectivity checks are not implemented yet")
+		for _, endpoint := range []struct{ name, url string }{
+			{"indeed", "https://apis.indeed.com/graphql"},
+			{"linkedin", "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"},
+			{"greenhouse", "https://boards-api.greenhouse.io"},
+		} {
+			ok, detail := a.checkConnectivity(cmd.Context(), endpoint.url)
+			add("connect:"+endpoint.name, ok, detail)
+		}
 	}
 
 	report.Checks = checks
@@ -109,6 +119,20 @@ func (a *App) runDoctor(f *doctorFlags) error {
 		a.printDoctor(&report)
 	}
 	return a.emit(result{Data: report})
+}
+
+func (a *App) checkConnectivity(ctx context.Context, raw string) (ok bool, detail string) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, raw, http.NoBody)
+	if err != nil {
+		return false, "invalid endpoint: " + err.Error()
+	}
+	resp, err := a.httpClient().Do(req)
+	if err != nil {
+		return false, "unreachable: " + err.Error()
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	return true, fmt.Sprintf("reachable (HTTP %d)", resp.StatusCode)
 }
 
 func (a *App) printDoctor(report *doctorReport) {

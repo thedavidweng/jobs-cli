@@ -56,7 +56,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 			if attempt == attempts-1 {
 				return nil, err
 			}
-			t.wait(retryAfter(nil, t.Policy.Backoff))
+			t.wait(RetryAfter(nil, t.Policy.Backoff))
 			continue
 		}
 		if resp.StatusCode != http.StatusTooManyRequests && resp.StatusCode < 500 {
@@ -66,7 +66,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 			lastResp = resp
 			break
 		}
-		delay := retryAfter(resp, t.Policy.Backoff)
+		delay := RetryAfter(resp, t.Policy.Backoff)
 		drain(resp)
 		t.wait(delay)
 	}
@@ -94,7 +94,7 @@ func (t *Transport) wait(d time.Duration) {
 	time.Sleep(d)
 }
 
-func retryAfter(resp *http.Response, fallback time.Duration) time.Duration {
+func RetryAfter(resp *http.Response, fallback time.Duration) time.Duration {
 	if resp == nil {
 		return fallback
 	}

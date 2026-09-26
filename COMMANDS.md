@@ -25,7 +25,8 @@ Available on every command:
 - `search`: search across discovery sources.
   - `--query/-q <text>`: keywords (required unless `--location` is given).
   - `--location <text>`: location filter.
-  - `--radius <km>`: radius around the location where the source supports it.
+  - `--radius <n>`: radius in the selected source's native units where supported
+    (Indeed uses miles).
   - `--remote`: filter for remote work where supported.
   - `--sort <mode>`: source-supported sort (e.g. recency).
   - `--limit <n>` (default 25), `--offset <n>`: page sizing.
@@ -42,6 +43,7 @@ Available on every command:
   (`<source>:<source-job-id>`, e.g. `indeed:517ca3fd71acddc9`).
   - `--resolve`: attach a best-effort Application Target.
   - `--authenticated`: use the authenticated LinkedIn surface for `linkedin:` IDs.
+    LinkedIn Guest supports search only; `show linkedin:<id>` requires this flag.
 
 ## Applications
 
@@ -84,7 +86,8 @@ Available on every command:
   verification posture (`VERIFIED WORKING`, `VERIFIED SOURCE IMPLEMENTATION`,
   `PARTIALLY VERIFIED`, `BROWSER REQUIRED`).
 - `doctor [--connect]`: local installation, config, and session checks;
-  `--connect` adds optional connectivity checks.
+  `--connect` adds optional connectivity checks for Indeed, LinkedIn, and
+  Greenhouse.
 
 ## Utilities
 

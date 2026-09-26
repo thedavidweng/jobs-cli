@@ -46,12 +46,20 @@ func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{BrowserRequired: true}
 }
 
-func (p *Provider) Inspect(_ context.Context, _ *domain.InspectRequest) (*domain.ApplicationInspection, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "lever native application inspection is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Inspect(_ context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("lever", "inspection", targetURL)
 }
 
-func (p *Provider) Submit(_ context.Context, _ *domain.SubmitRequest) (*domain.SubmissionResult, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "lever native application submission is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Submit(_ context.Context, req *domain.SubmitRequest) (*domain.SubmissionResult, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("lever", "submission", targetURL)
 }
 
 func (p *Provider) sourceCompany(req *domain.SearchRequest) string {
@@ -105,11 +113,11 @@ func (p *Provider) Detail(ctx context.Context, req *domain.DetailRequest) (*doma
 	if err := p.get(ctx, baseURL+"/v0/postings/"+url.PathEscape(company)+"/"+url.PathEscape(id), &item); err != nil {
 		return nil, err
 	}
-	returnPtr, err := normalize(company, &item)
+	job, err := normalize(company, &item)
 	if err != nil {
 		return nil, err
 	}
-	return &returnPtr, nil
+	return &job, nil
 }
 
 type posting struct {

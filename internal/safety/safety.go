@@ -9,10 +9,8 @@ import (
 type OperationTier string
 
 const (
-	TierRead         OperationTier = "read"
-	TierRemoteAction OperationTier = "remote_action"
-	TierMutation     OperationTier = "mutation"
-	TierDestructive  OperationTier = "destructive"
+	TierRead     OperationTier = "read"
+	TierMutation OperationTier = "mutation"
 )
 
 type Gate struct {

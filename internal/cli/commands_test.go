@@ -1,6 +1,8 @@
 package cli_test
 
 import (
+	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -53,8 +55,14 @@ func TestSourcesStatusAndDoctorReportDisjointContent(t *testing.T) {
 	}
 }
 
+type deadTransport struct{}
+
+func (deadTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("offline")
+}
+
 func TestDoctorConnectAddsOptionalCheck(t *testing.T) {
-	h := newHarness(t).useRealRegistry()
+	h := newHarness(t).useRealRegistry().withTransport(deadTransport{})
 	out, _, code := h.run("--json", "doctor", "--connect")
 	if code != 0 {
 		t.Fatalf("exit = %d", code)
@@ -64,21 +72,23 @@ func TestDoctorConnectAddsOptionalCheck(t *testing.T) {
 	if !ok {
 		t.Fatalf("data.checks = %#v", doc.Data["checks"])
 	}
-	found := false
+	seen := map[string]bool{}
 	for _, raw := range checks {
 		check, cok := raw.(map[string]any)
 		if !cok {
 			t.Fatalf("check = %#v", raw)
 		}
-		if check["check"] == "connectivity" {
-			found = true
+		if name, isConnect := check["check"].(string); isConnect && strings.HasPrefix(name, "connect:") {
+			seen[name] = true
 			if check["ok"] != false {
-				t.Fatalf("connectivity stub check should be false: %#v", check)
+				t.Fatalf("offline connect check %q should be false: %#v", name, check)
 			}
 		}
 	}
-	if !found {
-		t.Fatal("--connect did not add a connectivity check")
+	for _, want := range []string{"connect:indeed", "connect:linkedin", "connect:greenhouse"} {
+		if !seen[want] {
+			t.Fatalf("--connect missing check %q; seen = %#v", want, seen)
+		}
 	}
 }
 

@@ -22,12 +22,20 @@ func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{BrowserRequired: true}
 }
 
-func (p *Provider) Inspect(_ context.Context, _ *domain.InspectRequest) (*domain.ApplicationInspection, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "ashby native application inspection is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Inspect(_ context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("ashby", "inspection", targetURL)
 }
 
-func (p *Provider) Submit(_ context.Context, _ *domain.SubmitRequest) (*domain.SubmissionResult, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "ashby native application submission is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Submit(_ context.Context, req *domain.SubmitRequest) (*domain.SubmissionResult, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("ashby", "submission", targetURL)
 }
 
 type Source struct {
@@ -62,10 +70,10 @@ func (s *Source) Search(ctx context.Context, req *domain.SearchRequest) (*domain
 	normalized := make([]domain.Job, 0, len(jobs))
 	for i := range jobs {
 		job, err := normalize(&jobs[i])
-		job.Employer = org
 		if err != nil {
 			return nil, err
 		}
+		job.Employer = org
 		normalized = append(normalized, job)
 	}
 	return &domain.SearchPartition{Source: s.Name(), Jobs: normalized, Pagination: &domain.Pagination{Total: len(normalized), Native: &domain.NativePagination{Kind: domain.PaginationNone}}}, nil
@@ -84,11 +92,15 @@ func (s *Source) Detail(ctx context.Context, req *domain.DetailRequest) (*domain
 		return nil, err
 	}
 	for i := range jobs {
-		if jobs[i].ID == id {
-			job, err := normalize(&jobs[i])
-			job.Employer = org
-			return &job, err
+		if jobs[i].ID != id {
+			continue
 		}
+		job, err := normalize(&jobs[i])
+		if err != nil {
+			return nil, err
+		}
+		job.Employer = org
+		return &job, nil
 	}
 	return nil, errors.New(errors.ResourceNotFound, "Ashby job was not found", errors.CatAPI, false, nil)
 }

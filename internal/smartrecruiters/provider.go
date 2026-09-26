@@ -22,12 +22,20 @@ func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{BrowserRequired: true}
 }
 
-func (p *Provider) Inspect(context.Context, *domain.InspectRequest) (*domain.ApplicationInspection, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "smartrecruiters native application inspection is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Inspect(_ context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("smartrecruiters", "inspection", targetURL)
 }
 
-func (p *Provider) Submit(context.Context, *domain.SubmitRequest) (*domain.SubmissionResult, error) {
-	return nil, errors.New(errors.NativeApplyUnsupported, "smartrecruiters native application submission is not supported; apply in a browser", errors.CatAPI, false, nil)
+func (p *Provider) Submit(_ context.Context, req *domain.SubmitRequest) (*domain.SubmissionResult, error) {
+	var targetURL string
+	if req != nil {
+		targetURL = req.Target.URL
+	}
+	return nil, domain.BrowserRequiredError("smartrecruiters", "submission", targetURL)
 }
 
 type Source struct {
@@ -99,7 +107,10 @@ func (s *Source) Detail(ctx context.Context, r *domain.DetailRequest) (*domain.J
 		return nil, err
 	}
 	j, err := normalize(&p)
-	return &j, err
+	if err != nil {
+		return nil, err
+	}
+	return &j, nil
 }
 
 type listing struct {

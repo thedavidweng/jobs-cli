@@ -26,7 +26,6 @@ const (
 	detailQueryID   = "voyagerJobsDashJobPostingDetailSections.8195171dc4c610f8c1551eaef6546bd8"
 	applyQueryName  = "JobsOnsiteApplyApplicationByJobPosting"
 	applyQueryID    = "voyagerJobsDashOnsiteApplyApplication.34ac512c4fd87baec02c710aef4f563b"
-	applySubmitPath = "https://www.linkedin.com/voyager/api/voyagerJobsDashOnsiteApplyApplication?action=submitApplication"
 )
 
 type Source struct {
@@ -150,7 +149,7 @@ func InspectEasyApply(ctx context.Context, client *http.Client, sessions *config
 	if callErr != nil {
 		return nil, callErr
 	}
-	return parseEasyApply(raw), nil
+	return parseEasyApply(raw)
 }
 
 func queryGraphQL(ctx context.Context, client *http.Client, session *config.LinkedInSession, name, id string, variables any) (json.RawMessage, error) {
@@ -264,16 +263,23 @@ func parseSearch(raw []byte) ([]domain.Job, int, error) {
 			Total int `json:"total"`
 		} `json:"paging"`
 	}
+	found := false
 	for _, value := range response.Data {
 		if json.Unmarshal(value, &collection) == nil && (collection.Elements != nil || collection.Paging.Total > 0) {
+			found = true
 			break
 		}
 	}
+	if !found {
+		return nil, 0, joberrors.New(joberrors.APISchemaChanged, "LinkedIn Voyager search response had no job collection", joberrors.CatAPI, false, nil)
+	}
 	jobs := make([]domain.Job, 0, len(collection.Elements))
 	for _, element := range collection.Elements {
-		if job, ok := parseCard(element); ok {
-			jobs = append(jobs, job)
+		job, ok := parseCard(element)
+		if !ok {
+			return nil, 0, joberrors.New(joberrors.APISchemaChanged, "LinkedIn Voyager job card could not be parsed", joberrors.CatAPI, false, nil)
 		}
+		jobs = append(jobs, job)
 	}
 	return jobs, collection.Paging.Total, nil
 }
@@ -334,14 +340,20 @@ func parseDetail(raw []byte, id string) (*domain.Job, error) {
 	}
 	job := domain.NewJob(domain.SourceLinkedIn, id)
 	job.SourceURL, job.ApplicationURL = "https://www.linkedin.com/jobs/view/"+id, "https://www.linkedin.com/jobs/view/"+id
+	sawCard, sawDescription := false, false
 	walkJSON(root, func(m map[string]any) {
 		if top, ok := m["topCardV2"].(map[string]any); ok {
+			sawCard = true
 			fillTopCard(&job, top)
 		}
 		if description, ok := m["jobDescription"].(map[string]any); ok {
+			sawDescription = true
 			fillDescription(&job, description)
 		}
 	})
+	if !sawCard && !sawDescription {
+		return nil, joberrors.New(joberrors.APISchemaChanged, "LinkedIn Voyager detail response had no recognized sections", joberrors.CatAPI, false, nil)
+	}
 	if job.Title == "" {
 		return nil, joberrors.New(joberrors.ResourceNotFound, "LinkedIn job detail was not found", joberrors.CatAPI, false, nil)
 	}
@@ -413,22 +425,31 @@ func jobID(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func parseEasyApply(raw []byte) *EasyApply {
+func parseEasyApply(raw []byte) (*EasyApply, error) {
 	result := &EasyApply{}
 	var root any
-	if json.Unmarshal(raw, &root) != nil {
-		return result
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil, joberrors.New(joberrors.APISchemaChanged, "invalid LinkedIn Easy Apply response", joberrors.CatAPI, false, err)
 	}
+	recognized := false
 	walkJSON(root, func(m map[string]any) {
-		if available, _ := m["onsiteApply"].(bool); available {
-			result.Available = true
+		if available, ok := m["onsiteApply"].(bool); ok {
+			recognized = true
+			if available {
+				result.Available = true
+			}
 		}
 		if stringAtPath(m, "applyCtaText", "text") != "" {
+			recognized = true
 			result.Available = true
 		}
 		if stringAtPath(m, "resume", "name") != "" {
+			recognized = true
 			result.AcceptsResume = true
 		}
 	})
-	return result
+	if !recognized {
+		return nil, joberrors.New(joberrors.APISchemaChanged, "LinkedIn Easy Apply response had no recognized application shape", joberrors.CatAPI, false, nil)
+	}
+	return result, nil
 }

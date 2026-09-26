@@ -47,6 +47,9 @@ func New(opts Options) *Registry {
 	}
 	r.GuestSources[domain.SourceIndeed] = indeed.NewSource(opts.Client)
 	r.GuestSources[domain.SourceLinkedIn] = linkedinguest.NewSource(opts.Client)
+	r.GuestSources[domain.Source("lever")] = lever.NewSource(opts.Client)
+	r.GuestSources[domain.Source("ashby")] = ashby.NewSource(opts.Client)
+	r.GuestSources[domain.Source("smartrecruiters")] = smartrecruiters.NewSource(opts.Client)
 	r.AuthSources[domain.SourceLinkedIn] = voyager.NewSource(opts.Client, sessions)
 	r.Resolver = resolver.New(opts.Client)
 	r.Providers[domain.ProviderGreenhouse] = greenhouse.NewProvider(opts.Client)
