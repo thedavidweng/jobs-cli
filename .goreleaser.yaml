@@ -1,0 +1,77 @@
+version: 2
+project_name: jobs-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/jobs-cli
+    binary: jobs-cli
+    ldflags:
+      - -s -w
+      - -X github.com/thedavidweng/jobs-cli/internal/version.Version={{.Version}}
+      - -X github.com/thedavidweng/jobs-cli/internal/version.Commit={{.Commit}}
+      - -X github.com/thedavidweng/jobs-cli/internal/version.Date={{.Date}}
+      - -X github.com/thedavidweng/jobs-cli/internal/version.BuiltBy=goreleaser
+
+universal_binaries:
+  - replace: true
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64"}}x86_64
+      {{- else if eq .Arch "all"}}universal
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: thedavidweng
+    name: jobs-cli
+  mode: append
+  draft: false
+  prerelease: auto
+
+homebrew_casks:
+  - name: jobs-cli
+    binaries:
+      - jobs-cli
+    repository:
+      owner: thedavidweng
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/thedavidweng/jobs-cli
+    description: Agent-friendly CLI for job discovery and applications
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/jobs-cli"]
+          end

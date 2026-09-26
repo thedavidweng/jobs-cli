@@ -1,0 +1,45 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: rp
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+      - name: Create GitHub Release
+        if: ${{ steps.rp.outputs.release_created == 'true' && steps.rp.outputs.tag_name != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          TAG: ${{ steps.rp.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          install_notes="$(printf '%s\n' \
+            '# Installation' \
+            '' \
+            '```bash' \
+            '# Homebrew (source build until the first stable cask is published)' \
+            'brew install --HEAD thedavidweng/tap/jobs-cli' \
+            '' \
+            '# Go' \
+            "go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@${TAG}" \
+            '```')"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes "$install_notes"
+          else
+            gh release create "$TAG" --title "$TAG" --notes "$install_notes"
+          fi
