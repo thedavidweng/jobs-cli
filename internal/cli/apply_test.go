@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	"github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/linkedin"
 	"github.com/thedavidweng/jobs-cli/internal/testutil"
 )
 
@@ -250,14 +248,6 @@ func TestShowResolveIsOptIn(t *testing.T) {
 }
 
 func TestLinkedInEasyApplySubmitIsGatedAsUnverified(t *testing.T) {
-	store := config.NewSessionStore(t.TempDir())
-	session := config.NewLinkedInSession("default", "chrome", map[string]string{
-		config.CookieLiAt:       "secret-li-at",
-		config.CookieJSessionID: `"ajax:1234"`,
-	})
-	if err := store.Save(session); err != nil {
-		t.Fatalf("save session: %v", err)
-	}
 	target := &domain.ApplicationTarget{
 		URL:      "https://www.linkedin.com/jobs/view/1",
 		Provider: domain.ProviderLinkedIn,
@@ -266,12 +256,26 @@ func TestLinkedInEasyApplySubmitIsGatedAsUnverified(t *testing.T) {
 		},
 		Verification: domain.VerifiedSourceImpl,
 	}
+	inspection := &domain.ApplicationInspection{
+		Provider:     domain.ProviderLinkedIn,
+		Application:  *target,
+		Capabilities: domain.Capabilities{Inspect: true, Prepare: true, AuthRequired: true},
+	}
+	inspection.Fingerprint = domain.Fingerprint(target, inspection.Fields, inspection.Questions)
+	provider := &testutil.FakeProvider{
+		ProviderName: domain.ProviderLinkedIn,
+		Caps:         domain.Capabilities{Inspect: true, Prepare: true, AuthRequired: true},
+		Inspection:   inspection,
+		SubmitErr: errors.New(errors.LinkedInEasyApplyUnverified,
+			"Easy Apply submission is disabled until the Voyager implementation is verified with a live session",
+			errors.CatAPI, false, nil),
+	}
 	job := fakeJob(domain.SourceLinkedIn, "1")
 	job.ApplicationURL = target.URL
 	reg := testutil.NewRegistry(
 		map[domain.Source]domain.SourceAdapter{domain.SourceLinkedIn: &testutil.FakeSource{SourceName: domain.SourceLinkedIn, Job: job}},
 		&testutil.FakeResolver{Target: target},
-		map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderLinkedIn: linkedin.NewProvider(nil, store)},
+		map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderLinkedIn: provider},
 	)
 	h := newHarness(t).useRegistry(reg)
 	manifest := h.writeFile("linkedin.json", "{}")
@@ -284,4 +288,7 @@ func TestLinkedInEasyApplySubmitIsGatedAsUnverified(t *testing.T) {
 	submitOut, _, code := h.run("--json", "apply", "submit", "--artifact", "-", "--confirm")
 	doc := decodeEnvelope(t, submitOut)
 	requireCode(t, &doc, "LINKEDIN_EASY_APPLY_UNVERIFIED", 6, code)
+	if provider.SubmitCalls != 1 {
+		t.Fatalf("submit calls = %d, want 1 (gating happens at the provider boundary)", provider.SubmitCalls)
+	}
 }
