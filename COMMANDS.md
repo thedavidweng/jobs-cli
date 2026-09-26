@@ -24,7 +24,11 @@ Available on every command:
 
 - `search`: search across discovery sources.
   - `--query/-q <text>`: keywords (required unless `--location` is given).
-  - `--location <text>`: location filter.
+  - `--location <text>`: location filter. Indeed takes free text. Authenticated
+    LinkedIn (Voyager) requires a geo URN (`urn:li:fsd_geo:<id>`, the `geoId`
+    from a LinkedIn jobs search URL) or a built-in known location (for example
+    `Vancouver, BC` or `remote`); anything else fails the linkedin partition
+    with `INVALID_ARGUMENTS` listing the known values.
   - `--radius <n>`: radius in the selected source's native units where supported
     (Indeed uses miles).
   - `--remote`: filter for remote work where supported.
@@ -33,7 +37,15 @@ Available on every command:
   - `--source <name>` (repeatable): `indeed`, `linkedin` in v1. Omitting it
     searches Indeed + LinkedIn (Guest) in parallel.
   - `--cursor <token>`: continue a single source's native pagination.
-  - `--authenticated`: use authenticated LinkedIn Voyager instead of Guest.
+  - `--authenticated`: use authenticated LinkedIn Voyager instead of Guest for
+    the linkedin partition. Only LinkedIn has an authenticated variant, so
+    Indeed (and any other source) keeps running its own implementation; the
+    flag never turns a source off.
+  - `--country <code>`, `--locale <tag>`: Indeed market override (for example
+    `CA` / `en-CA`). Indeed sends these as `indeed-co` / `indeed-locale` and
+    builds market source URLs (`ca.indeed.com`). Precedence: flag over
+    environment (`JOBS_COUNTRY` / `JOBS_LOCALE`) over profile. Defaults are
+    `US` / `en-<country>`.
   - Results are **Search Partitions**: one per source, each with its own jobs,
     pagination, or structured error. Partial success (>= 1 source ok) exits 0
     with `meta.warnings`; exit non-zero only when every requested source fails.
@@ -55,7 +67,9 @@ Available on every command:
 - `apply inspect <job-id>`: fetch application requirements (fields, questions
   with ids/labels/types/options/required status, resume/cover-letter support)
   without mutation.
-  - `--authenticated`: for LinkedIn Easy Apply targets.
+  - `--authenticated`: for LinkedIn Easy Apply targets. A LinkedIn job whose
+    native Easy Apply is unavailable is reported as `BROWSER_REQUIRED` with the
+    LinkedIn job URL; it never becomes a linkedin application artifact.
 - `apply prepare <job-id>`: combine candidate data and answers, validate
   locally, and produce a versioned JSON Application Artifact. Nothing remote is
   submitted.
@@ -63,7 +77,8 @@ Available on every command:
     paths; or `--answers <path>` plus `--resume <path>` / `--cover-letter <path>`.
   - `--out <path>`: required in human mode (there is no default artifact path);
     in JSON mode the artifact may be emitted on stdout.
-  - `--authenticated`: for LinkedIn Easy Apply targets.
+  - `--authenticated`: for LinkedIn Easy Apply targets. Non-Easy-Apply jobs
+    fail with `BROWSER_REQUIRED` before an artifact is produced.
 - `apply submit`: execute the supported remote mutation.
   - `--artifact <path | ->`: the Application Artifact from `apply prepare`
     (file, or `-` for stdin).
@@ -88,6 +103,32 @@ Available on every command:
 - `doctor [--connect]`: local installation, config, and session checks;
   `--connect` adds optional connectivity checks for Indeed, LinkedIn, and
   Greenhouse.
+
+## Configuration
+
+Config file: `<config-dir>/config.yaml` (default dir `~/.jobs-cli`), with named
+profiles:
+
+```yaml
+default_profile: default
+profiles:
+  default:
+    sources:
+      - indeed
+      - linkedin
+    country: CA      # Indeed market; default US
+    locale: en-CA    # Indeed locale; defaults to en-<country>
+    timeout: 30s
+    read_only: false
+    linkedin:
+      session_file: /path/to/session.json
+```
+
+Environment overrides: `JOBS_PROFILE`, `JOBS_CONFIG`, `JOBS_TIMEOUT`,
+`JOBS_READ_ONLY`, `JOBS_SOURCES`, `JOBS_COUNTRY`, `JOBS_LOCALE`. The search
+`--country` / `--locale` flags override both. The market drives Indeed's
+`indeed-co` / `indeed-locale` headers and the canonical source URL host
+(`www.indeed.com` for US, `ca.indeed.com` for CA, `uk.indeed.com` for GB).
 
 ## Utilities
 

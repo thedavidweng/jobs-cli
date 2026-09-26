@@ -90,6 +90,21 @@ jobs-cli completion
 Full flags and behavior: [`COMMANDS.md`](COMMANDS.md). Machine-readable
 contract: [`JSON_SCHEMA.md`](JSON_SCHEMA.md).
 
+## Configuration
+
+`~/.jobs-cli/config.yaml` carries named profiles. The market (default `US`)
+drives Indeed's country/locale headers and source URLs:
+
+```yaml
+profiles:
+  default:
+    country: CA
+    locale: en-CA
+```
+
+`JOBS_COUNTRY` / `JOBS_LOCALE` override the profile; `search --country` /
+`--locale` override both.
+
 Product specification: [`docs/spec.md`](docs/spec.md). Domain glossary:
 [`CONTEXT.md`](CONTEXT.md). Architecture decisions: [`docs/adr/`](docs/adr/).
 

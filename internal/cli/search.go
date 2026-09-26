@@ -28,6 +28,8 @@ type searchFlags struct {
 	cursor        string
 	sources       []string
 	authenticated bool
+	country       string
+	locale        string
 }
 
 func searchCmd(a *App) *cobra.Command {
@@ -38,6 +40,8 @@ func searchCmd(a *App) *cobra.Command {
 		Short:   "Search discovery sources and return results partitioned by Source",
 		Long: `Search discovery sources. Results are partitioned by Source; jobs-cli never
 merges or deduplicates across sources. Default sources are indeed and linkedin (Guest).
+--authenticated switches the linkedin partition to authenticated Voyager; sources
+without an authenticated variant (indeed) keep their single implementation.
 
 Continuation is per source: pass exactly one --source plus that source's native
 --cursor or --offset. There is no cross-source page token.`,
@@ -47,7 +51,7 @@ Continuation is per source: pass exactly one --source plus that source's native
 		},
 	}
 	cmd.Flags().StringVarP(&f.query, "query", "q", "", "search keywords")
-	cmd.Flags().StringVarP(&f.location, "location", "l", "", "location filter")
+	cmd.Flags().StringVarP(&f.location, "location", "l", "", "location filter (with --authenticated, LinkedIn needs a geo URN like urn:li:fsd_geo:<id> or a known location)")
 	cmd.Flags().IntVar(&f.radius, "radius", 0, "search radius in source-native units")
 	cmd.Flags().BoolVar(&f.remote, "remote", false, "restrict to remote roles where the source supports it")
 	cmd.Flags().StringVar(&f.sort, "sort", "", "sort order (source-native)")
@@ -55,7 +59,9 @@ Continuation is per source: pass exactly one --source plus that source's native
 	cmd.Flags().IntVar(&f.offset, "offset", 0, "native offset for single-source continuation")
 	cmd.Flags().StringVar(&f.cursor, "cursor", "", "native cursor for single-source continuation")
 	cmd.Flags().StringSliceVar(&f.sources, "source", nil, "discovery source (repeatable; v1: indeed, linkedin)")
-	cmd.Flags().BoolVar(&f.authenticated, "authenticated", false, "use authenticated LinkedIn (Voyager) instead of Guest")
+	cmd.Flags().BoolVar(&f.authenticated, "authenticated", false, "use authenticated LinkedIn (Voyager) instead of Guest (LinkedIn only)")
+	cmd.Flags().StringVar(&f.country, "country", "", "Indeed market country code (e.g. CA; default US; overrides profile and JOBS_COUNTRY)")
+	cmd.Flags().StringVar(&f.locale, "locale", "", "Indeed market locale (e.g. en-CA; defaults to en-<country>; overrides profile and JOBS_LOCALE)")
 	return cmd
 }
 
@@ -71,6 +77,8 @@ func (a *App) runSearch(cmd *cobra.Command, f *searchFlags) error {
 		return err
 	}
 
+	country, locale := a.searchMarket(cmd, f)
+
 	reg := a.registry()
 	results := make([]partResult, len(sources))
 	var wg sync.WaitGroup
@@ -78,7 +86,7 @@ func (a *App) runSearch(cmd *cobra.Command, f *searchFlags) error {
 		wg.Add(1)
 		go func(index int, source domain.Source) {
 			defer wg.Done()
-			results[index] = searchOne(ctx, reg, source, f)
+			results[index] = searchOne(ctx, reg, source, f, country, locale)
 		}(i, name)
 	}
 	wg.Wait()
@@ -125,7 +133,7 @@ type partResult struct {
 	err       error
 }
 
-func searchOne(ctx context.Context, reg sourceRegistry, source domain.Source, f *searchFlags) partResult {
+func searchOne(ctx context.Context, reg sourceRegistry, source domain.Source, f *searchFlags, country, locale string) partResult {
 	adapter, aerr := reg.Source(source, f.authenticated)
 	if aerr != nil {
 		return partResult{
@@ -143,6 +151,8 @@ func searchOne(ctx context.Context, reg sourceRegistry, source domain.Source, f 
 		Offset:        f.offset,
 		Cursor:        f.cursor,
 		Authenticated: f.authenticated,
+		Country:       country,
+		Locale:        locale,
 	}
 	partition, err := adapter.Search(ctx, req)
 	if err != nil {
@@ -170,6 +180,17 @@ func remoteFilter(f *searchFlags) *bool {
 	}
 	value := true
 	return &value
+}
+
+func (a *App) searchMarket(cmd *cobra.Command, f *searchFlags) (country, locale string) {
+	country, locale = a.config().Market()
+	if cmd.Flags().Changed("country") {
+		country = strings.TrimSpace(f.country)
+	}
+	if cmd.Flags().Changed("locale") {
+		locale = strings.TrimSpace(f.locale)
+	}
+	return country, locale
 }
 
 func (a *App) resolveSearchSources(cmd *cobra.Command, f *searchFlags) ([]domain.Source, error) {

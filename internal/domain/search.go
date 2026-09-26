@@ -41,6 +41,8 @@ type SearchRequest struct {
 	Offset        int
 	Cursor        string
 	Authenticated bool
+	Country       string
+	Locale        string
 }
 
 type SearchPartition struct {
@@ -57,4 +59,6 @@ type SearchResult struct {
 type DetailRequest struct {
 	SourceJobID   string
 	Authenticated bool
+	Country       string
+	Locale        string
 }

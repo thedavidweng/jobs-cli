@@ -42,6 +42,9 @@ func (p *Provider) Inspect(ctx context.Context, req *domain.InspectRequest) (*do
 	if err != nil {
 		return nil, err
 	}
+	if !easyApply.Available {
+		return nil, domain.BrowserRequiredError("linkedin", "inspection", req.Target.URL)
+	}
 	inspection := &domain.ApplicationInspection{
 		Provider:           domain.ProviderLinkedIn,
 		Application:        req.Target,

@@ -10,7 +10,7 @@ import (
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
 )
 
-func normalizeJob(node *jobNode) (*domain.Job, *joberrors.Error) {
+func normalizeJob(node *jobNode, mkt market) (*domain.Job, *joberrors.Error) {
 	if node == nil {
 		return nil, schemaDrift("job node is missing")
 	}
@@ -27,7 +27,7 @@ func normalizeJob(node *jobNode) (*domain.Job, *joberrors.Error) {
 	job.Workplace, job.Remote = workplace(node.Attributes)
 	job.PostedDate = postedDate(node.DatePublished)
 	job.Compensation = compensationFor(node.Compensation, node.Recruit)
-	job.SourceURL = viewJobURLPrefix + node.Key
+	job.SourceURL = mkt.viewJobURL(node.Key)
 	job.ApplicationURL = recruitViewURL(node.Recruit)
 	job.Description = descriptionText(node.Description)
 	raw, err := json.Marshal(node)
