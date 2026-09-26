@@ -102,4 +102,3 @@ mise run check
 The quality gate runs formatting, build, unit tests, lint, and repository
 convention checks. Release configuration and required repository secrets are
 documented in [`docs/releasing.md`](docs/releasing.md).
-

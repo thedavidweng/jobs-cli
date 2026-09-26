@@ -11,8 +11,6 @@ import (
 	"github.com/thedavidweng/jobs-cli/internal/errors"
 )
 
-// Resolver maps an application URL to an Application Target. LookupIP is
-// injectable so tests can control DNS without network access.
 type Resolver struct {
 	Client   *http.Client
 	LookupIP func(ctx context.Context, host string) ([]net.IP, error)

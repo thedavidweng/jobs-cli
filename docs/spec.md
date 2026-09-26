@@ -1,6 +1,6 @@
 # jobs-cli Specification
 
-Canonical product and implementation spec for `jobs-cli`, updated after the September 2026 grilling session. Domain vocabulary lives in [`CONTEXT.md`](../CONTEXT.md). Architectural decisions live in [`docs/adr/`](./adr/). Feasibility evidence remains under `.scratch/feasibility/` (gitignored local working copy).
+Canonical product and implementation spec for `jobs-cli`, updated after the September 2026 grilling session. Domain vocabulary lives in [`CONTEXT.md`](../CONTEXT.md). Architectural decisions live in [`docs/adr/`](./adr/). Historical feasibility research informed the implementation but is intentionally not part of the public source tree.
 
 **Binary name:** `jobs-cli` (not `jobs` — shell builtin conflict; users may alias locally).  
 **Module:** `github.com/thedavidweng/jobs-cli`  
@@ -668,7 +668,10 @@ Public command/flag/output behavior must remain synchronized with:
 
 New architectural choices require ADRs according to the existing CLI-family convention.
 
-The feasibility research should remain available as implementation evidence and protocol history (`.scratch/feasibility/`).
+The implementation evidence and protocol history are represented by the typed
+adapters, transport-pinned tests, fixtures, ADRs, and external provenance links
+in this repository. Private research notes are not runtime dependencies and are
+not tracked in the public source tree.
 
 ### 28. Distribution
 
@@ -924,7 +927,8 @@ When a provider requires a browser, the CLI returns structured capability inform
 
 The feasibility investigation was performed on September 25–26, 2026.
 
-Local evidence: `.scratch/feasibility/` (gitignored). Implementation Agents should treat the following results as established starting evidence and should not repeat the research phase unless an endpoint fails during implementation.
+The following results are established implementation evidence. Do not repeat
+the research phase unless an endpoint fails during implementation.
 
 #### Indeed — VERIFIED WORKING
 
@@ -1244,7 +1248,7 @@ High-value existing work:
 
 ### Existing research artifacts
 
-The current project research already contains:
+The implementation was preceded by research covering:
 
 - master capability matrix;
 - repository inventory;
@@ -1256,7 +1260,9 @@ The current project research already contains:
 - Workday investigation;
 - working Indeed proof of concept.
 
-Implementation work should preserve these materials under `.scratch/feasibility/`.
+The private research artifacts are not tracked in this public repository.
+Public evidence is preserved in the adapters, fixtures, transport-pinned tests,
+ADR documents, and upstream provenance references.
 
 If implementation encounters a contradiction between a live endpoint and the September 2026 research, document the new evidence and update the research rather than silently changing assumptions.
 

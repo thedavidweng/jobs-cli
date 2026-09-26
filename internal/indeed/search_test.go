@@ -19,8 +19,7 @@ import (
 )
 
 // pinnedAPIKey mirrors the Indeed mobile client API key shipped in
-// .scratch/feasibility/evidence/repos/JobSpy/jobspy/indeed/constant.py
-// (speedyapply/JobSpy commit 4ec308a302e35b2a765a6bb73cee659c4011ff91).
+// https://github.com/speedyapply/JobSpy/blob/4ec308a302e35b2a765a6bb73cee659c4011ff91/jobspy/indeed/constant.py
 const pinnedAPIKey = "161092c2017b5bbab13edb12461a62d5a833871e7cad6d9d475304573de67ac8"
 
 const (
