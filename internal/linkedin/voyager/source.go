@@ -160,7 +160,7 @@ func queryGraphQL(ctx context.Context, client *http.Client, session *config.Link
 	}
 	u, _ := url.Parse(graphQLEndpoint)
 	u.RawQuery = "queryId=" + url.QueryEscape(id) + "&queryName=" + url.QueryEscape(name) + "&variables=" + encoded
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
 	if err != nil {
 		return nil, joberrors.New(joberrors.InternalError, "build LinkedIn Voyager request", joberrors.CatInternal, false, err)
 	}
