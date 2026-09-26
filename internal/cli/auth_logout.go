@@ -21,11 +21,7 @@ func authLogoutCmd(a *App) *cobra.Command {
 }
 
 func (a *App) runAuthLogout() error {
-	service := a.registry().LinkedInAuth
-	if service == nil {
-		return joberrors.New(joberrors.NotImplemented, "session removal is not available", joberrors.CatInternal, false, nil)
-	}
-	removed, err := service.Logout()
+	removed, err := a.config().SessionStore().Remove()
 	if err != nil {
 		return joberrors.New(joberrors.InternalError, err.Error(), joberrors.CatInternal, false, err)
 	}

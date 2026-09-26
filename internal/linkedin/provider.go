@@ -2,12 +2,12 @@ package linkedin
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/thedavidweng/jobs-cli/internal/config"
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/internal/linkedin/voyager"
 )
 
 type Provider struct {
@@ -33,32 +33,22 @@ func (p *Provider) Capabilities() domain.Capabilities {
 	}
 }
 
-func (p *Provider) requireSession() *joberrors.Error {
-	if p.Sessions == nil {
-		return joberrors.New(joberrors.LinkedInSessionRequired, "no LinkedIn session store configured", joberrors.CatAuth, false, nil)
+func (p *Provider) Inspect(ctx context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
+	id := req.Target.ProviderJobID
+	if id == "" {
+		id = req.Job.SourceJobID
 	}
-	session, err := p.Sessions.Load()
+	easyApply, err := voyager.InspectEasyApply(ctx, p.Client, p.Sessions, id)
 	if err != nil {
-		if errors.Is(err, config.ErrSessionNotFound) {
-			return joberrors.New(joberrors.LinkedInSessionRequired, "LinkedIn session required for Easy Apply; run `jobs-cli auth linkedin login`", joberrors.CatAuth, false, nil)
-		}
-		return joberrors.New(joberrors.InternalError, err.Error(), joberrors.CatInternal, false, err)
-	}
-	if !session.Complete() {
-		return joberrors.New(joberrors.LinkedInSessionRequired, "stored LinkedIn session is incomplete (needs li_at and JSESSIONID); run `jobs-cli auth linkedin login`", joberrors.CatAuth, false, nil)
-	}
-	return nil
-}
-
-func (p *Provider) Inspect(_ context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
-	if err := p.requireSession(); err != nil {
 		return nil, err
 	}
 	inspection := &domain.ApplicationInspection{
 		Provider:           domain.ProviderLinkedIn,
 		Application:        req.Target,
-		AcceptsResume:      false,
-		AcceptsCoverLetter: false,
+		Fields:             easyApply.Fields,
+		Questions:          easyApply.Questions,
+		AcceptsResume:      easyApply.AcceptsResume,
+		AcceptsCoverLetter: easyApply.AcceptsCoverLetter,
 		Capabilities:       p.Capabilities(),
 	}
 	inspection.Fingerprint = domain.Fingerprint(&req.Target, inspection.Fields, inspection.Questions)
