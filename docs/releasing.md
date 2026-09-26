@@ -25,6 +25,10 @@ repository, workflow files, issues, or logs.
 5. GoReleaser builds archives for macOS, Linux, and Windows, creates the GitHub
    Release, and updates `Casks/jobs-cli.rb` in `homebrew-tap`.
 
+The version baseline lives in `.release-please-manifest.json` (currently
+`0.0.0`; no release has shipped yet). Each Release Please pull request bumps it
+together with `CHANGELOG.md`.
+
 Until the first stable release is published, install the source-built formula:
 
 ```shell
