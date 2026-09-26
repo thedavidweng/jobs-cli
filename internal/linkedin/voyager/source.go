@@ -128,7 +128,6 @@ func (s *Source) httpClient() *http.Client {
 	return http.DefaultClient
 }
 
-// EasyApply contains only non-secret application requirements returned by Voyager.
 type EasyApply struct {
 	Available          bool
 	Fields             []domain.ApplicationField
@@ -196,7 +195,6 @@ func addHeaders(req *http.Request, session *config.LinkedInSession) {
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 }
 
-// EncodeVariables implements the Rest.li GraphQL variable format.
 func EncodeVariables(v any) (string, error) { return encode(reflect.ValueOf(v)) }
 
 func encode(v reflect.Value) (string, error) {

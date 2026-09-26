@@ -1,8 +1,8 @@
 package indeed
 
 // Mobile client identity bundle, taken verbatim from the pinned upstream
-// reference: .scratch/feasibility/evidence/repos/JobSpy/jobspy/indeed/constant.py
-// (github.com/speedyapply/JobSpy, commit 4ec308a302e35b2a765a6bb73cee659c4011ff91).
+// reference:
+// https://github.com/speedyapply/JobSpy/blob/4ec308a302e35b2a765a6bb73cee659c4011ff91/jobspy/indeed/constant.py
 // These values were live-verified against the Indeed mobile GraphQL service in
 // September 2026; replacing any of them triggers Cloudflare anti-bot challenges.
 // The remote filter key comes from jobspy/indeed/__init__.py at the same commit.
