@@ -64,12 +64,13 @@ func New(opts Options) *Registry {
 }
 
 func (r *Registry) Source(name domain.Source, authenticated bool) (domain.SourceAdapter, *errors.Error) {
-	table := r.GuestSources
-	if authenticated {
-		table = r.AuthSources
+	if authenticated && r.AuthSources != nil {
+		if source, ok := r.AuthSources[name]; ok && source != nil {
+			return source, nil
+		}
 	}
-	if table != nil {
-		if source, ok := table[name]; ok && source != nil {
+	if r.GuestSources != nil {
+		if source, ok := r.GuestSources[name]; ok && source != nil {
 			return source, nil
 		}
 	}

@@ -75,7 +75,11 @@ func (s *Source) Search(ctx context.Context, req *domain.SearchRequest) (*domain
 		"spellCorrectionEnabled": true,
 	}
 	if req.Location != "" {
-		query["location"] = req.Location
+		geoUrn, lerr := resolveLocation(req.Location)
+		if lerr != nil {
+			return nil, lerr
+		}
+		query["locationUnion"] = map[string]any{"geoUrn": geoUrn}
 	}
 	variables := map[string]any{"query": query, "includeJobState": true, "count": limit, "start": req.Offset}
 	if req.Remote != nil && *req.Remote {

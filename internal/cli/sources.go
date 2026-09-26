@@ -88,7 +88,7 @@ func applicationProviders() []entryStatus {
 			Name: "linkedin", Kind: "application_provider", Role: "native",
 			AuthRequired: true, Inspect: true, Prepare: true, NativeSubmit: false,
 			Verification: string(domain.VerifiedSourceImpl),
-			Notes:        "Easy Apply inspect is available; submit stays disabled until live verification (LINKEDIN_EASY_APPLY_UNVERIFIED)",
+			Notes:        "Easy Apply inspect is available when LinkedIn-native apply is offered; non-Easy-Apply jobs are BROWSER_REQUIRED; submit stays disabled until live verification (LINKEDIN_EASY_APPLY_UNVERIFIED)",
 		},
 		{
 			Name: "indeed", Kind: "application_provider", Role: "browser",

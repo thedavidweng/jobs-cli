@@ -494,3 +494,55 @@ func sameFloat(got, want *float64) bool {
 	}
 	return *got == *want
 }
+
+func TestSearchSendsConfiguredCAMarket(t *testing.T) {
+	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
+	partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{
+		Keywords: "software engineer",
+		Location: "Vancouver, BC",
+		Country:  "CA",
+		Locale:   "en-CA",
+	})
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	req := r.request
+	for _, header := range []struct{ name, want string }{
+		{"Indeed-Locale", "en-CA"},
+		{"Indeed-Co", "CA"},
+		{"Accept-Language", "en-CA,en;q=0.9"},
+	} {
+		if got := req.Header.Get(header.name); got != header.want {
+			t.Errorf("%s = %q, want %q", header.name, got, header.want)
+		}
+	}
+	if len(partition.Jobs) != 3 {
+		t.Fatalf("jobs = %d, want 3", len(partition.Jobs))
+	}
+	for _, job := range partition.Jobs {
+		if job.SourceURL != "https://ca.indeed.com/viewjob?jk="+job.SourceJobID {
+			t.Errorf("job %s source url = %q, want the ca.indeed.com market host", job.ID, job.SourceURL)
+		}
+	}
+}
+
+func TestSearchDerivesLocaleFromCountryAndCountryFromLocale(t *testing.T) {
+	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
+	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "go", Country: "ca"}); err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if got := r.request.Header.Get("Indeed-Locale"); got != "en-CA" {
+		t.Errorf("Indeed-Locale = %q, want the derived en-CA", got)
+	}
+	if got := r.request.Header.Get("Indeed-Co"); got != "CA" {
+		t.Errorf("Indeed-Co = %q, want CA", got)
+	}
+
+	r = &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
+	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "go", Locale: "en-CA"}); err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if got := r.request.Header.Get("Indeed-Co"); got != "CA" {
+		t.Errorf("Indeed-Co = %q, want the locale-derived CA", got)
+	}
+}

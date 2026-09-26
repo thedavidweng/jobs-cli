@@ -325,6 +325,7 @@ Application metadata must include enough information to expose capabilities such
 Defaults and contracts (ADR-0003, 0005, 0011, 0015):
 
 - Default sources when `--source` is omitted: `indeed` + `linkedin` (Guest).
+- `--authenticated` selects the authenticated variant **only for Sources that have one** (LinkedIn Voyager). Indeed has no authenticated variant, so `search --authenticated` with default sources must still run the Indeed partition through Indeed and only switch the linkedin partition to Voyager; the flag never turns a Source off.
 - Results are **partitioned by Source** (each Search Partition has its own jobs, pagination, or structured error). No cross-source flat merge or fingerprint dedup in the CLI.
 - The same real-world opening found on two Sources yields two Job IDs; Agents may dedupe after `resolve` if they choose.
 - Source requests fan out **in parallel** under `--timeout`.
@@ -373,6 +374,8 @@ Required functionality:
 
 The required mobile client identity/header bundle must be sourced from the pinned working JobSpy implementation referenced under Further Notes.
 
+Market parameters are profile-driven, not guessed from the `--location` string. `indeed-co`, `indeed-locale`, and `accept-language` derive from the profile market (`country` / `locale`, overridable via `JOBS_COUNTRY` / `JOBS_LOCALE` and `search --country` / `--locale`). The canonical source URL host follows the same market (`www.indeed.com` for US, `ca.indeed.com` for CA, `uk.indeed.com` for GB). Defaults are `US` / `en-US` — the live-verified values of the pinned bundle; the September 2026 Vancouver verification used `indeed-locale: en-CA` with `indeed-co: CA`. The locale defaults to `en-<country>` when only a country is set.
+
 Do not invent a new Indeed query if the verified query is sufficient.
 
 ### 10. Indeed application behavior
@@ -411,9 +414,13 @@ Reuse/adapt the known:
 
 Authenticated Voyager is currently classified as `VERIFIED SOURCE IMPLEMENTATION`, not yet `VERIFIED WORKING` in this project.
 
-`--source linkedin` must **not** silently upgrade to Voyager when a session exists. Callers pass an explicit authenticated switch (for example `--authenticated`) to use Voyager (ADR-0008).
+`--source linkedin` must **not** silently upgrade to Voyager when a session exists. Callers pass an explicit authenticated switch (for example `--authenticated`) to use Voyager (ADR-0008). The switch applies to the linkedin partition only; Sources without an authenticated variant keep their single implementation.
+
+Authenticated location filtering follows the donor's geo URN mechanism: `--location` resolves to `urn:li:fsd_geo:<id>` (raw `urn:li:` passthrough or the built-in known-locations table), then the search encodes `query.locationUnion.geoUrn` — never a raw location string. An unknown location fails the linkedin partition with `INVALID_ARGUMENTS` listing the known values and the raw URN escape hatch.
 
 Before enabling native Easy Apply submission as a supported user-facing capability, perform a controlled live integration verification using a user-supplied valid LinkedIn session. Until then: Easy Apply **inspect** may work; **submit** returns a machine-readable not-yet-verified / unsupported outcome (`LINKEDIN_EASY_APPLY_UNVERIFIED`) without changing the command tree.
+
+Easy Apply availability is checked per job: when inspection shows LinkedIn-native apply is not available (`onsiteApply: false`), the job reports `BROWSER_REQUIRED` with the LinkedIn job URL. A non-Easy-Apply job must never be represented as `application.provider: linkedin` in an Application Artifact — the Source stays LinkedIn while the actual application happens on the employer's ATS in a browser.
 
 ### 13. LinkedIn authentication
 
@@ -770,6 +777,7 @@ Cover:
 - `recruit.viewJobUrl`;
 - batch details;
 - schema drift;
+- market propagation (US and CA at minimum: `indeed-co`, `indeed-locale`, `accept-language`, market source URL host, from profile, environment, and flags);
 - anti-bot response detection as an API failure rather than HTML parsing success.
 
 Fixture shape should be derived from the verified `speedyapply/JobSpy` implementation and the September 2026 live investigation.
@@ -794,8 +802,11 @@ Adapt the behavioral coverage demonstrated by `yashiels/linkedin-cli`, especiall
 - persisted query invocation;
 - search parsing;
 - detail parsing;
-- Easy Apply inspection;
+- location resolution: the exact `locationUnion.geoUrn` Rest.li shape, raw `urn:li:fsd_geo` passthrough, and unknown-location `INVALID_ARGUMENTS`;
+- Easy Apply inspection, including `BROWSER_REQUIRED` for jobs whose native Easy Apply is unavailable;
 - submission gating (`LINKEDIN_EASY_APPLY_UNVERIFIED` until live-verified).
+
+Add a command-seam regression: default multi-source search with `--authenticated` keeps Indeed on Indeed and switches only the linkedin partition to Voyager.
 
 Do not claim live success from fixture tests.
 

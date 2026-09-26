@@ -16,6 +16,15 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
+func rawVariables(request *http.Request) string {
+	marker := "variables="
+	index := strings.Index(request.URL.RawQuery, marker)
+	if index < 0 {
+		return ""
+	}
+	return request.URL.RawQuery[index+len(marker):]
+}
+
 func TestEncodeVariables(t *testing.T) {
 	got, err := EncodeVariables(map[string]any{
 		"query": map[string]any{"keywords": "go developer", "urn": "urn:li:fsd_geo:1"},
@@ -27,6 +36,58 @@ func TestEncodeVariables(t *testing.T) {
 	want := "(query:(keywords:go%20developer,urn:urn%3Ali%3Afsd_geo%3A1),tags:List(R,''))"
 	if got != want {
 		t.Fatalf("EncodeVariables() = %q, want %q", got, want)
+	}
+}
+
+func TestSearchEncodesLocationUnionGeoUrn(t *testing.T) {
+	store := testStore(t)
+	var request *http.Request
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		request = req.Clone(req.Context())
+		body := `{"data":{"jobsDashJobCardsByJobSearch":{"paging":{"total":0},"elements":[]}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	source := &Source{Client: client, Sessions: store}
+	if _, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "swift", Location: "Vancouver, BC", Limit: 10}); err != nil {
+		t.Fatal(err)
+	}
+	variables := rawVariables(request)
+	want := "locationUnion:(geoUrn:urn%3Ali%3Afsd_geo%3A103366113)"
+	if !strings.Contains(variables, want) {
+		t.Fatalf("variables missing the locationUnion geoUrn shape %q:\n%s", want, variables)
+	}
+	if !strings.Contains(variables, "(keywords:swift,locationUnion:(geoUrn:urn%3Ali%3Afsd_geo%3A103366113),origin:JOB_SEARCH_PAGE_SEARCH_BUTTON,spellCorrectionEnabled:true)") {
+		t.Fatalf("variables do not pin the donor query shape:\n%s", variables)
+	}
+	if strings.Contains(variables, "location:Vancouver") {
+		t.Fatalf("variables leak the raw location string instead of the geoUrn:\n%s", variables)
+	}
+}
+
+func TestSearchAcceptsRawGeoUrnAndRejectsUnknownLocations(t *testing.T) {
+	store := testStore(t)
+	var request *http.Request
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		request = req.Clone(req.Context())
+		body := `{"data":{"jobsDashJobCardsByJobSearch":{"paging":{"total":0},"elements":[]}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	source := &Source{Client: client, Sessions: store}
+	if _, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "swift", Location: "urn:li:fsd_geo:91000010"}); err != nil {
+		t.Fatal(err)
+	}
+	variables := rawVariables(request)
+	if !strings.Contains(variables, "geoUrn:urn%3Ali%3Afsd_geo%3A91000010") {
+		t.Fatalf("raw geo URN was not passed through:\n%s", variables)
+	}
+
+	source = &Source{Client: client, Sessions: store}
+	_, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "swift", Location: "Nowhere, ZZ"})
+	if got := joberrors.From(err).Code; got != joberrors.InvalidArguments {
+		t.Fatalf("error code = %s, want INVALID_ARGUMENTS (message: %v)", got, err)
+	}
+	if !strings.Contains(err.Error(), "urn:li:fsd_geo") {
+		t.Fatalf("error message does not explain the geo URN escape hatch: %v", err)
 	}
 }
 

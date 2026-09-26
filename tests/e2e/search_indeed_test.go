@@ -23,6 +23,8 @@ type indeedTransport struct {
 	url     string
 	key     string
 	app     string
+	co      string
+	locale  string
 	body    string
 	respond func(call int) *http.Response
 }
@@ -33,6 +35,8 @@ func (tr *indeedTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	tr.url = req.URL.String()
 	tr.key = req.Header.Get("indeed-api-key")
 	tr.app = req.Header.Get("indeed-app-info")
+	tr.co = req.Header.Get("indeed-co")
+	tr.locale = req.Header.Get("indeed-locale")
 	raw, err := io.ReadAll(req.Body)
 	if err != nil {
 		tr.t.Fatalf("read request body: %v", err)
@@ -64,13 +68,18 @@ func indeedFixture(t *testing.T, name string) *http.Response {
 	return testutil.JSONResponse(http.StatusOK, string(data))
 }
 
-func runIndeedSearch(t *testing.T, transport *indeedTransport, args ...string) indeedSearchDoc {
+func runIndeedSearch(t *testing.T, transport http.RoundTripper, args ...string) indeedSearchDoc {
+	t.Helper()
+	return runIndeedSearchDir(t, t.TempDir(), transport, args...)
+}
+
+func runIndeedSearchDir(t *testing.T, configDir string, transport http.RoundTripper, args ...string) indeedSearchDoc {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
 	app := cli.New(&cli.Options{
 		Stdout:        &stdout,
 		Stderr:        &stderr,
-		ConfigDir:     t.TempDir(),
+		ConfigDir:     configDir,
 		BaseTransport: transport,
 	})
 	code := app.Run(args)
@@ -280,4 +289,51 @@ func TestSearchIndeedCommandContinuesWithCursor(t *testing.T) {
 	if len(partition.Jobs) != 1 || partition.Jobs[0].ID != "indeed:eeee1111f222f333" {
 		t.Fatalf("last page jobs = %+v", partition.Jobs)
 	}
+}
+
+func TestSearchIndeedMarketComesFromProfileEnvAndFlags(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte("profiles:\n  default:\n    country: CA\n    locale: en-CA\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	transport := &indeedTransport{
+		t:       t,
+		respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
+	}
+	doc := runIndeedSearchDir(t, dir, transport, "--json", "search", "-q", "software engineer", "--source", "indeed")
+	if transport.co != "CA" || transport.locale != "en-CA" {
+		t.Fatalf("outgoing market headers = %q/%q, want CA/en-CA from the profile", transport.co, transport.locale)
+	}
+	if len(doc.Data.Partitions) != 1 || len(doc.Data.Partitions[0].Jobs) != 3 {
+		t.Fatalf("partitions = %+v", doc.Data.Partitions)
+	}
+	if got := doc.Data.Partitions[0].Jobs[0].SourceURL; got != "https://ca.indeed.com/viewjob?jk=b8ef297959c26ac5" {
+		t.Fatalf("job source url = %q, want the ca.indeed.com market host", got)
+	}
+
+	t.Run("flag overrides profile and env", func(t *testing.T) {
+		t.Setenv("JOBS_COUNTRY", "GB")
+		transport := &indeedTransport{
+			t:       t,
+			respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
+		}
+		runIndeedSearchDir(t, dir, transport, "--json", "search", "-q", "software engineer", "--source", "indeed", "--country", "US")
+		if transport.co != "US" {
+			t.Fatalf("outgoing indeed-co = %q, want the flag-provided US over profile CA and env GB", transport.co)
+		}
+	})
+
+	t.Run("env overrides profile", func(t *testing.T) {
+		t.Setenv("JOBS_COUNTRY", "GB")
+		t.Setenv("JOBS_LOCALE", "en-GB")
+		transport := &indeedTransport{
+			t:       t,
+			respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
+		}
+		runIndeedSearchDir(t, dir, transport, "--json", "search", "-q", "software engineer", "--source", "indeed")
+		if transport.co != "GB" || transport.locale != "en-GB" {
+			t.Fatalf("outgoing market headers = %q/%q, want GB/en-GB from the environment", transport.co, transport.locale)
+		}
+	})
 }

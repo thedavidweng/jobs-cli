@@ -8,7 +8,7 @@ import (
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
 )
 
-func parseSearchResponse(body []byte) ([]domain.Job, string, *joberrors.Error) {
+func parseSearchResponse(body []byte, mkt market) ([]domain.Job, string, *joberrors.Error) {
 	var envelope graphQLResponse
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, "", schemaDrift("response is not valid JSON: " + err.Error())
@@ -26,7 +26,7 @@ func parseSearchResponse(body []byte) ([]domain.Job, string, *joberrors.Error) {
 	if payload.JobSearch.PageInfo == nil {
 		return nil, "", schemaDrift("jobSearch has no pageInfo object")
 	}
-	jobs, err := jobsFromResults(payload.JobSearch.Results)
+	jobs, err := jobsFromResults(payload.JobSearch.Results, mkt)
 	if err != nil {
 		return nil, "", err
 	}
@@ -37,7 +37,7 @@ func parseSearchResponse(body []byte) ([]domain.Job, string, *joberrors.Error) {
 	return jobs, nextCursor, nil
 }
 
-func jobsFromResults(results []searchEdge) ([]domain.Job, *joberrors.Error) {
+func jobsFromResults(results []searchEdge, mkt market) ([]domain.Job, *joberrors.Error) {
 	if results == nil {
 		return nil, schemaDrift("jobSearch has no results array")
 	}
@@ -46,7 +46,7 @@ func jobsFromResults(results []searchEdge) ([]domain.Job, *joberrors.Error) {
 		if edge.Job == nil {
 			return nil, schemaDrift(fmt.Sprintf("jobSearch result %d has no job node", index))
 		}
-		job, err := normalizeJob(edge.Job)
+		job, err := normalizeJob(edge.Job, mkt)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func jobsFromResults(results []searchEdge) ([]domain.Job, *joberrors.Error) {
 	return jobs, nil
 }
 
-func parseDetailResponse(body []byte, key string) (*domain.Job, *joberrors.Error) {
+func parseDetailResponse(body []byte, key string, mkt market) (*domain.Job, *joberrors.Error) {
 	var envelope graphQLResponse
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, schemaDrift("response is not valid JSON: " + err.Error())
@@ -80,7 +80,7 @@ func parseDetailResponse(body []byte, key string) (*domain.Job, *joberrors.Error
 		if edge.Job.Key != key {
 			continue
 		}
-		return normalizeJob(edge.Job)
+		return normalizeJob(edge.Job, mkt)
 	}
 	return nil, joberrors.New(
 		joberrors.ResourceNotFound,

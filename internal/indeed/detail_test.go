@@ -73,6 +73,20 @@ func TestDetailBatchRequestAndNormalization(t *testing.T) {
 	}
 }
 
+func TestDetailUsesConfiguredMarketForSourceURL(t *testing.T) {
+	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "detail.json") }}
+	job, err := newSource(r).Detail(context.Background(), &domain.DetailRequest{SourceJobID: detailJobKey, Country: "CA", Locale: "en-CA"})
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+	if job.SourceURL != "https://ca.indeed.com/viewjob?jk="+detailJobKey {
+		t.Errorf("source url = %q, want the ca.indeed.com market host", job.SourceURL)
+	}
+	if got := r.request.Header.Get("Indeed-Co"); got != "CA" {
+		t.Errorf("Indeed-Co = %q, want CA", got)
+	}
+}
+
 func TestDetailAcceptsCompoundJobID(t *testing.T) {
 	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "detail.json") }}
 	if _, err := newSource(r).Detail(context.Background(), &domain.DetailRequest{SourceJobID: "indeed:" + detailJobKey}); err != nil {

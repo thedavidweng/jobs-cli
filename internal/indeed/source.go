@@ -26,11 +26,12 @@ func (s *Source) Search(ctx context.Context, req *domain.SearchRequest) (*domain
 	if err := validateSearch(req); err != nil {
 		return nil, err
 	}
-	body, err := s.call(ctx, searchQuery(req))
+	mkt := marketFor(req.Country, req.Locale)
+	body, err := s.call(ctx, searchQuery(req), mkt)
 	if err != nil {
 		return nil, err
 	}
-	jobs, nextCursor, perr := parseSearchResponse(body)
+	jobs, nextCursor, perr := parseSearchResponse(body, mkt)
 	if perr != nil {
 		return nil, perr
 	}
@@ -51,11 +52,12 @@ func (s *Source) Detail(ctx context.Context, req *domain.DetailRequest) (*domain
 		return nil, invalidArguments("a source job ID is required")
 	}
 	key := strings.TrimPrefix(strings.TrimSpace(req.SourceJobID), string(domain.SourceIndeed)+":")
-	body, err := s.call(ctx, detailQuery(key))
+	mkt := marketFor(req.Country, req.Locale)
+	body, err := s.call(ctx, detailQuery(key), mkt)
 	if err != nil {
 		return nil, err
 	}
-	job, perr := parseDetailResponse(body, key)
+	job, perr := parseDetailResponse(body, key, mkt)
 	if perr != nil {
 		return nil, perr
 	}

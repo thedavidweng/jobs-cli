@@ -128,7 +128,10 @@ Returned by `resolve` (and attached to Jobs with `show --resolve`):
 
 Providers with no native public submission (Lever, Ashby, Workday,
 SmartRecruiters, iCIMS, external) report `browser_required: true` plus a usable
-application URL.
+application URL. A LinkedIn job URL resolves to the `linkedin` provider (Easy
+Apply may be available); `apply inspect`/`prepare` return `BROWSER_REQUIRED`
+with the LinkedIn job URL when the job's native Easy Apply is unavailable, so
+non-Easy-Apply jobs never produce a linkedin application artifact.
 
 ### Application Inspection
 

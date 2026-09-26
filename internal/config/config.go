@@ -22,6 +22,8 @@ type Profile struct {
 	Timeout  time.Duration   `yaml:"timeout"`
 	ReadOnly bool            `yaml:"read_only"`
 	Sources  []string        `yaml:"sources"`
+	Country  string          `yaml:"country"`
+	Locale   string          `yaml:"locale"`
 	LinkedIn LinkedInProfile `yaml:"linkedin"`
 }
 
@@ -101,6 +103,12 @@ func applyFile(cfg *Config, raw map[string]any) {
 		if v, ok := fields["sources"].([]any); ok {
 			prof.Sources = toStrings(v)
 		}
+		if v, ok := fields["country"].(string); ok {
+			prof.Country = strings.TrimSpace(v)
+		}
+		if v, ok := fields["locale"].(string); ok {
+			prof.Locale = strings.TrimSpace(v)
+		}
 		if v, ok := fields["linkedin"].(map[string]any); ok {
 			if v, ok := v["session_file"].(string); ok {
 				prof.LinkedIn.SessionFile = v
@@ -150,6 +158,12 @@ func (c *Config) resolve() {
 			prof.Sources = names
 		}
 	}
+	if v := strings.TrimSpace(os.Getenv("JOBS_COUNTRY")); v != "" {
+		prof.Country = v
+	}
+	if v := strings.TrimSpace(os.Getenv("JOBS_LOCALE")); v != "" {
+		prof.Locale = v
+	}
 	c.Active = prof
 }
 
@@ -158,6 +172,13 @@ func (c *Config) Sources() []string {
 		return DefaultSources()
 	}
 	return c.Active.Sources
+}
+
+func (c *Config) Market() (country, locale string) {
+	if c.Active == nil {
+		return "", ""
+	}
+	return c.Active.Country, c.Active.Locale
 }
 
 func (c *Config) Dir() string {
