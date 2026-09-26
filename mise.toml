@@ -16,17 +16,7 @@ run = "gofumpt -extra -w ."
 run = "golangci-lint run"
 
 [tasks.conventions]
-run = '''
-for f in CLAUDE.md .cursorrules .windsurfrules .clinerules GEMINI.md; do
-  if [ -e "$f" ]; then echo "forbidden per-tool agent file: $f (use AGENTS.md)"; exit 1; fi
-done
-files=$(find cmd internal -name '*.go' ! -name '*_test.go')
-total=$(cat $files | grep -cv '^[[:space:]]*$')
-comments=$(cat $files | grep -E '^[[:space:]]*//' | grep -cvE '^[[:space:]]*//(go:|nolint)' || true)
-if [ "$comments" -gt $((total * 5 / 100)) ]; then
-  echo "comment budget exceeded: $comments comment lines > 5% of $total code lines"; exit 1
-fi
-'''
+run = "go run ./internal/tools/conventions"
 
 [tasks.check]
 depends = ["fmt", "build", "test", "lint", "conventions"]
