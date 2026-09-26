@@ -170,7 +170,7 @@ func TestSearchIndeedCommandReturnsNormalizedPartition(t *testing.T) {
 		respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
 	}
 	doc := runIndeedSearch(t, transport,
-		"--json", "search", "--query", "software engineer", "--location", "Vancouver, BC", "--source", "indeed")
+		"--json", "--full", "search", "--query", "software engineer", "--location", "Vancouver, BC", "--source", "indeed")
 
 	if !doc.OK {
 		t.Fatalf("envelope ok = false")

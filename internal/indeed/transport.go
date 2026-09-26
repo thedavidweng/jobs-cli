@@ -9,11 +9,10 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/internal/httpclient"
 )
 
 func (s *Source) call(ctx context.Context, query string) ([]byte, *joberrors.Error) {
@@ -81,7 +80,7 @@ func statusFailure(resp *http.Response, body []byte) *joberrors.Error {
 	case http.StatusOK:
 		return nil
 	case http.StatusTooManyRequests:
-		return joberrors.NewWithRetryAfter(joberrors.RateLimited, "indeed rate limited the request", joberrors.CatAPI, true, retryAfter(resp), nil)
+		return joberrors.NewWithRetryAfter(joberrors.RateLimited, "indeed rate limited the request", joberrors.CatAPI, true, httpclient.RetryAfter(resp, time.Second), nil)
 	case http.StatusUnauthorized, http.StatusForbidden:
 		if looksLikeHTML(body) {
 			return antiBotError(resp)
@@ -112,13 +111,6 @@ func antiBotError(resp *http.Response) *joberrors.Error {
 		false,
 		nil,
 	)
-}
-
-func retryAfter(resp *http.Response) time.Duration {
-	if seconds, err := strconv.Atoi(strings.TrimSpace(resp.Header.Get("Retry-After"))); err == nil && seconds > 0 {
-		return time.Duration(seconds) * time.Second
-	}
-	return time.Second
 }
 
 func looksLikeHTML(body []byte) bool {
