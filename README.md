@@ -17,7 +17,7 @@ application execution are routed independently.
 ## Install
 
 ```bash
-# placeholder: Homebrew, GitHub Releases, and `go install` are wired up in a later ticket
+# placeholder: Homebrew and GitHub Release download are wired up in a later ticket
 go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@latest
 ```
 
@@ -35,4 +35,15 @@ jobs-cli version
 jobs-cli completion
 ```
 
-See [`docs/spec.md`](docs/spec.md), [`CONTEXT.md`](CONTEXT.md), and [`docs/adr/`](docs/adr/).
+Full flag reference: [`COMMANDS.md`](COMMANDS.md). Machine-readable contract:
+[`JSON_SCHEMA.md`](JSON_SCHEMA.md).
+
+Product spec: [`docs/spec.md`](docs/spec.md). Domain glossary:
+[`CONTEXT.md`](CONTEXT.md). Architecture: [`docs/adr/`](docs/adr/).
+
+## Development
+
+```bash
+mise run check   # fmt + build + test + lint + conventions (the quality gate)
+```
+

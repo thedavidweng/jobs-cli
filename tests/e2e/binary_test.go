@@ -121,13 +121,14 @@ func TestBinaryJSONContractsAndExitCodes(t *testing.T) {
 		}
 	})
 
-	t.Run("search_all_stub_sources_fail", func(t *testing.T) {
-		stdout, stderr, code := testutil.RunBinary(t, env, "--json", "search", "-q", "go")
+	t.Run("search_all_sources_fail_offline", func(t *testing.T) {
+		offline := append(append([]string{}, env...), "HTTP_PROXY=http://127.0.0.1:1", "HTTPS_PROXY=http://127.0.0.1:1")
+		stdout, stderr, code := testutil.RunBinary(t, offline, "--json", "search", "-q", "go")
 		if code != 5 {
 			t.Fatalf("exit = %d, want 5 (stderr: %s)", code, stderr)
 		}
 		doc := decodeOne(t, stdout)
-		if doc.OK || doc.Error == nil || doc.Error.Code != "SOURCE_UNAVAILABLE" {
+		if doc.OK || doc.Error == nil || doc.Error.Category != "network" {
 			t.Fatalf("envelope = %+v", doc)
 		}
 	})
@@ -142,18 +143,19 @@ func TestBinaryJSONContractsAndExitCodes(t *testing.T) {
 		}
 	})
 
-	t.Run("show_stub_source", func(t *testing.T) {
-		stdout, _, code := testutil.RunBinary(t, env, "--json", "show", "indeed:1442")
+	t.Run("show_source_unreachable_offline", func(t *testing.T) {
+		offline := append(append([]string{}, env...), "HTTP_PROXY=http://127.0.0.1:1", "HTTPS_PROXY=http://127.0.0.1:1")
+		stdout, _, code := testutil.RunBinary(t, offline, "--json", "show", "indeed:1442")
 		if code != 5 {
 			t.Fatalf("exit = %d, want 5", code)
 		}
-		if doc := decodeOne(t, stdout); doc.Error == nil || doc.Error.Code != "SOURCE_UNAVAILABLE" {
+		if doc := decodeOne(t, stdout); doc.Error == nil || doc.Error.Category != "network" {
 			t.Fatalf("envelope = %+v", doc)
 		}
 	})
 
-	t.Run("resolve_stub_resolver", func(t *testing.T) {
-		stdout, _, code := testutil.RunBinary(t, env, "--json", "resolve", "https://boards.greenhouse.io/acme/jobs/1")
+	t.Run("resolve_rejected_target", func(t *testing.T) {
+		stdout, _, code := testutil.RunBinary(t, env, "--json", "resolve", "https://127.0.0.1/jobs/1")
 		if code != 6 {
 			t.Fatalf("exit = %d, want 6", code)
 		}

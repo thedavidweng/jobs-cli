@@ -7,7 +7,6 @@ import (
 
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	"github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/greenhouse"
 	"github.com/thedavidweng/jobs-cli/internal/testutil"
 )
 
@@ -66,7 +65,12 @@ func TestExitCodeTaxonomy(t *testing.T) {
 	})
 
 	t.Run("source_unavailable", func(t *testing.T) {
-		h := newHarness(t).useRealRegistry()
+		reg := testutil.NewRegistry(
+			map[domain.Source]domain.SourceAdapter{domain.SourceLinkedIn: &testutil.FakeSource{SourceName: domain.SourceLinkedIn}},
+			&testutil.FakeResolver{},
+			map[domain.ApplicationProvider]domain.ApplyProvider{},
+		)
+		h := newHarness(t).useRegistry(reg)
 		out, _, code := h.run("--json", "search", "-q", "go", "--source", "indeed")
 		doc := decodeEnvelope(t, out)
 		requireCode(t, &doc, "SOURCE_UNAVAILABLE", 5, code)
@@ -84,17 +88,25 @@ func TestExitCodeTaxonomy(t *testing.T) {
 
 	t.Run("ats_resolution_failed", func(t *testing.T) {
 		h := newHarness(t).useRealRegistry()
-		out, _, code := h.run("--json", "resolve", "https://example.com/jobs/1")
+		out, _, code := h.run("--json", "resolve", "https://169.254.169.254/latest/meta-data/")
 		doc := decodeEnvelope(t, out)
 		requireCode(t, &doc, "ATS_RESOLUTION_FAILED", 6, code)
 	})
 
 	t.Run("native_apply_unsupported", func(t *testing.T) {
 		source := &testutil.FakeSource{SourceName: domain.SourceIndeed, Job: fakeJob(domain.SourceIndeed, "1")}
+		target := greenhouseTarget()
+		target.Provider = domain.ProviderWorkday
+		target.Capabilities = domain.Capabilities{Inspect: true, Prepare: true, BrowserRequired: true}
 		reg := testutil.NewRegistry(
 			map[domain.Source]domain.SourceAdapter{domain.SourceIndeed: source},
-			&testutil.FakeResolver{Target: greenhouseTarget()},
-			map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderGreenhouse: greenhouse.NewProvider(nil)},
+			&testutil.FakeResolver{Target: target},
+			map[domain.ApplicationProvider]domain.ApplyProvider{
+				domain.ProviderWorkday: &testutil.FakeProvider{
+					ProviderName: domain.ProviderWorkday,
+					InspectErr:   errors.New(errors.NativeApplyUnsupported, "workday native application is not supported; apply in a browser", errors.CatAPI, false, nil),
+				},
+			},
 		)
 		h := newHarness(t).useRegistry(reg)
 		out, _, code := h.run("--json", "apply", "inspect", "indeed:1")
@@ -144,11 +156,11 @@ func TestExitCodeTaxonomy(t *testing.T) {
 		}
 	})
 
-	t.Run("not_implemented_auth_login", func(t *testing.T) {
+	t.Run("invalid_browser_auth_login", func(t *testing.T) {
 		h := newHarness(t).useRealRegistry()
-		out, _, code := h.run("--json", "auth", "linkedin", "login")
+		out, _, code := h.run("--json", "auth", "linkedin", "login", "--browser", "nope")
 		doc := decodeEnvelope(t, out)
-		requireCode(t, &doc, "NOT_IMPLEMENTED", 1, code)
+		requireCode(t, &doc, "INVALID_ARGUMENTS", 2, code)
 	})
 }
 
