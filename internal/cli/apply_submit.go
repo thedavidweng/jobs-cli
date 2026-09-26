@@ -89,6 +89,10 @@ func (a *App) runApplySubmit(cmd *cobra.Command, f *applySubmitFlags) error {
 		return staleErr
 	}
 
+	if verr := artifact.Validate(&prepared, inspection); verr != nil {
+		return verr
+	}
+
 	if gateErr := a.gate().Check(safety.TierMutation); gateErr != nil {
 		return gateErr
 	}

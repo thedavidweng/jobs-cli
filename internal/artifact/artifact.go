@@ -2,7 +2,6 @@ package artifact
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -136,42 +135,147 @@ func Validate(a *domain.ApplicationArtifact, inspection *domain.ApplicationInspe
 	if inspection == nil {
 		return nil
 	}
-	var missing []string
+	var problems []string
+	attachmentKinds := attachmentKinds(a)
 	for _, field := range inspection.Fields {
-		if field.Required && a.Candidate.Value(field.Name) == "" {
-			missing = append(missing, fieldLabel(field))
+		if isFileField(field) {
+			if field.Required {
+				if _, ok := attachmentKinds[strings.ToLower(field.Name)]; !ok {
+					problems = append(problems, fieldLabel(field))
+				}
+			}
+			continue
+		}
+		if field.Required && strings.TrimSpace(a.Candidate.Value(field.Name)) == "" {
+			problems = append(problems, fieldLabel(field))
 		}
 	}
 	answers := AnswerMap(a)
 	for i := range inspection.Questions {
 		question := &inspection.Questions[i]
-		if question.Required && answers[question.ID] == "" {
-			missing = append(missing, questionLabel(question))
-		}
-	}
-	for _, attachment := range a.Attachments {
-		if attachment.Kind == "" {
-			missing = append(missing, "attachment with unspecified kind")
-			continue
-		}
-		if attachment.Path == "" {
-			missing = append(missing, attachment.Kind+" path")
-			continue
-		}
-		if _, err := os.Stat(attachment.Path); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				missing = append(missing, fmt.Sprintf("%s file %s", attachment.Kind, attachment.Path))
-				continue
+		value := strings.TrimSpace(answers[question.ID])
+		if value == "" {
+			if question.Required {
+				problems = append(problems, questionLabel(question))
 			}
-			return joberrors.New(joberrors.ApplicationIncomplete, fmt.Sprintf("cannot read %s file %s: %v", attachment.Kind, attachment.Path, err), joberrors.CatValidation, false, err)
+			continue
+		}
+		if problem := validateAnswer(question, value); problem != "" {
+			problems = append(problems, questionLabel(question)+": "+problem)
 		}
 	}
-	if len(missing) > 0 {
+	problems = append(problems, validateAttachments(a, inspection)...)
+	if len(problems) > 0 {
 		return joberrors.New(joberrors.ApplicationIncomplete,
-			"application is incomplete; missing required input: "+strings.Join(missing, ", "),
+			"application is incomplete; fix: "+strings.Join(problems, ", "),
 			joberrors.CatValidation, false, nil)
 	}
 	return nil
+}
+
+var supportedQuestionTypes = map[string]bool{
+	"input_text":                true,
+	"textarea":                  true,
+	"long_text":                 true,
+	"input_file":                true,
+	"multi_value_single_select": true,
+	"multi_value_multi_select":  true,
+	"boolean":                   true,
+	"number":                    true,
+	"email":                     true,
+	"phone":                     true,
+	"url":                       true,
+}
+
+func validateAnswer(question *domain.ApplicationQuestion, value string) string {
+	questionType := strings.ToLower(strings.TrimSpace(question.Type))
+	if questionType == "input_file" {
+		if _, err := os.Stat(value); err != nil {
+			return "file " + value + " is not readable"
+		}
+		return ""
+	}
+	if questionType != "" && !supportedQuestionTypes[questionType] {
+		return fmt.Sprintf("unsupported question type %q", question.Type)
+	}
+	if len(question.Options) == 0 {
+		return ""
+	}
+	allowed := make(map[string]bool, len(question.Options)*2)
+	for _, option := range question.Options {
+		if value := strings.ToLower(strings.TrimSpace(option.Value)); value != "" {
+			allowed[value] = true
+		}
+		if label := strings.ToLower(strings.TrimSpace(option.Label)); label != "" {
+			allowed[label] = true
+		}
+	}
+	values := []string{value}
+	if questionType == "multi_value_multi_select" {
+		values = strings.Split(value, ",")
+	}
+	for _, candidate := range values {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+		if !allowed[strings.ToLower(candidate)] {
+			return fmt.Sprintf("value %q is not one of the allowed options", candidate)
+		}
+	}
+	return ""
+}
+
+func validateAttachments(a *domain.ApplicationArtifact, inspection *domain.ApplicationInspection) []string {
+	var problems []string
+	for _, attachment := range a.Attachments {
+		kind := strings.TrimSpace(attachment.Kind)
+		if kind == "" {
+			problems = append(problems, "attachment with unspecified kind")
+			continue
+		}
+		if strings.TrimSpace(attachment.Path) == "" {
+			problems = append(problems, kind+" path")
+			continue
+		}
+		if _, err := os.Stat(attachment.Path); err != nil {
+			problems = append(problems, fmt.Sprintf("%s file %s", kind, attachment.Path))
+			continue
+		}
+		switch strings.ToLower(kind) {
+		case "resume":
+			if !inspection.AcceptsResume {
+				problems = append(problems, "this application does not accept a resume")
+			}
+		case "cover_letter":
+			if !inspection.AcceptsCoverLetter {
+				problems = append(problems, "this application does not accept a cover letter")
+			}
+		}
+	}
+	return problems
+}
+
+func attachmentKinds(a *domain.ApplicationArtifact) map[string]bool {
+	kinds := make(map[string]bool, len(a.Attachments))
+	for _, attachment := range a.Attachments {
+		if kind := strings.ToLower(strings.TrimSpace(attachment.Kind)); kind != "" {
+			kinds[kind] = true
+		}
+	}
+	return kinds
+}
+
+func isFileField(field domain.ApplicationField) bool {
+	if strings.EqualFold(strings.TrimSpace(field.Type), "file") {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(field.Name)) {
+	case "resume", "cover_letter":
+		return true
+	default:
+		return false
+	}
 }
 
 func fieldLabel(field domain.ApplicationField) string {
