@@ -41,6 +41,9 @@ func (a *App) runResolve(cmd *cobra.Command, f *resolveFlags, input string) erro
 		if err != nil {
 			return err
 		}
+		if job.Application != nil {
+			return a.reportTarget(job.Application)
+		}
 		rawURL = applicationURL(job)
 		if rawURL == "" {
 			return joberrors.New(joberrors.ATSResolutionFailed, "job "+input+" has no application URL to resolve", joberrors.CatAPI, false, nil)
@@ -53,6 +56,10 @@ func (a *App) runResolve(cmd *cobra.Command, f *resolveFlags, input string) erro
 	if err != nil {
 		return err
 	}
+	return a.reportTarget(target)
+}
+
+func (a *App) reportTarget(target *domain.ApplicationTarget) error {
 	if !a.jsonMode {
 		a.printTarget(target)
 	}
