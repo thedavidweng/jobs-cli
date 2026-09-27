@@ -104,10 +104,22 @@ Available on every command:
   `--connect` adds optional connectivity checks for Indeed, LinkedIn, and
   Greenhouse.
 
+Notes:
+
+- Indeed discovery needs no login: `search` and `show` query Indeed anonymously,
+  and `sources status` reports the Indeed discovery Source with
+  `auth_required=false`. Applying through the Indeed Application Provider is a
+  separate, browser-required path.
+- `auth status` reports the local LinkedIn Session for the active profile only
+  (`profile` + `linkedin`); it is not a per-provider auth posture report. The
+  capability matrix, including which Sources and Application Providers need
+  auth, is `sources status` (see ADR-0012).
+
 ## Configuration
 
-Config file: `<config-dir>/config.yaml` (default dir `~/.jobs-cli`), with named
-profiles:
+Config file: `<config-dir>/config.yaml` (default dir `~/.jobs-cli` on macOS,
+`%APPDATA%\jobs-cli` on Windows, `${XDG_CONFIG_HOME:-~/.config}/jobs-cli` on
+Linux; `JOBS_CONFIG_DIR` overrides it), with named profiles:
 
 ```yaml
 default_profile: default
@@ -132,7 +144,11 @@ Environment overrides: `JOBS_PROFILE`, `JOBS_CONFIG`, `JOBS_TIMEOUT`,
 
 ## Utilities
 
-- `version`: version information.
+- `version`: version information — module version, commit, date, builder, Go
+  version, and build info. Release archives and the Homebrew cask are built with
+  complete commit, date, and builder metadata; `go install` builds may report
+  `(commit: none, date: unknown, built by: unknown)` because the toolchain does
+  not record full VCS provenance for module installs.
 - `completion [bash|zsh|fish|powershell]`: shell completions.
 
 ## Safety Model

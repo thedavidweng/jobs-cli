@@ -8,9 +8,10 @@ place Voyager authentication material is stored.
 
 - Directory: `<config-dir>/sessions` — created with mode `0700`.
 - File: `<config-dir>/sessions/<profile>.json` — written with mode `0600`.
-- `<config-dir>` defaults to `~/.jobs-cli` on macOS/Windows and
-  `${XDG_CONFIG_HOME:-~/.config}/jobs-cli` on Linux, overridable with
-  `JOBS_CONFIG_DIR`.
+- `<config-dir>` defaults to `~/.jobs-cli` on macOS, `%APPDATA%\jobs-cli` on
+  Windows (falling back to `~/.jobs-cli` when `%APPDATA%` is unavailable), and
+  `${XDG_CONFIG_HOME:-~/.config}/jobs-cli` on Linux. `JOBS_CONFIG_DIR` overrides
+  the default on every platform.
 - A profile may override the file path with `profiles.<name>.linkedin.session_file`.
 - Session material is never embedded in `config.yaml` and is never printed by
   `auth status`, `doctor`, or any normal output path. `auth status` reports only
