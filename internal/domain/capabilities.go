@@ -1,8 +1,6 @@
 package domain
 
-// providerCapabilities is the single source of truth for what jobs-cli can do
-// natively per Application Provider. resolve, show --resolve, apply inspect,
-// and sources status all derive their capability flags from it.
+// providerCapabilities is the canonical Capability table per Application Provider.
 var providerCapabilities = map[ApplicationProvider]Capabilities{
 	ProviderGreenhouse:      {Inspect: true, Prepare: true, NativeSubmit: true},
 	ProviderLinkedIn:        {Inspect: true, Prepare: true, AuthRequired: true},

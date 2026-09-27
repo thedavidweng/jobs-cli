@@ -148,6 +148,29 @@ func TestSessionStatusDistinguishesAbsentInvalidUnreadableAndValid(t *testing.T)
 	}
 }
 
+func TestSessionStatusReportsUnstattableSessionAsInvalid(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits")
+	}
+	store := config.NewSessionStore(t.TempDir())
+	if err := os.MkdirAll(store.Dir(), 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(store.Path(), []byte("{}"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(store.Dir(), 0o700)
+	})
+	if err := os.Chmod(store.Dir(), 0o000); err != nil {
+		t.Fatalf("chmod dir: %v", err)
+	}
+	status := store.Status()
+	if !status.Present || !status.Invalid || status.Complete || status.InvalidReason == "" {
+		t.Fatalf("unstattable status = %#v, want present but invalid with a reason", status)
+	}
+}
+
 func TestSessionPathOverrideFromConfig(t *testing.T) {
 	dir := t.TempDir()
 	custom := filepath.Join(dir, "custom-session.json")

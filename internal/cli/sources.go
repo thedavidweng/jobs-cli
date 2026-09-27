@@ -101,8 +101,7 @@ func applicationProviders() []entryStatus {
 	}
 }
 
-// providerEntry builds an Application Provider row whose Capability flags come
-// from the canonical domain table, so sources status cannot drift from resolve.
+// providerEntry builds an Application Provider row from the canonical domain table.
 func providerEntry(provider domain.ApplicationProvider, role, verification, notes string) entryStatus {
 	capabilities := domain.CapabilitiesFor(provider)
 	return entryStatus{

@@ -35,7 +35,7 @@ error and writes nothing.`,
 			return a.runAuthLinkedInImport(f)
 		},
 	}
-	cmd.Flags().StringVar(&f.fromJSON, "from-json", "", "session JSON source: - for stdin, or a file path")
+	cmd.Flags().StringVar(&f.fromJSON, "from-json", "", "session JSON (- for stdin)")
 	return cmd
 }
 

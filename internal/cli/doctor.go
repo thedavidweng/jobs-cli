@@ -95,9 +95,7 @@ func (a *App) runDoctor(cmd *cobra.Command, f *doctorFlags) error {
 	case status.Complete:
 		add("session", true, fmt.Sprintf("present (%s), cookies: %s", status.CapturedAt, strings.Join(status.CookieNames, ", ")))
 	case status.Invalid:
-		add("session", false, "present but invalid: "+status.InvalidReason+"; run `jobs-cli auth linkedin login` or `jobs-cli auth linkedin import --from-json -`")
-	case status.Present:
-		add("session", false, "present but incomplete (needs li_at and JSESSIONID); run `jobs-cli auth linkedin login`")
+		add("session", false, "present but invalid: "+status.InvalidReason+"; "+linkedInSessionReplaceHint)
 	default:
 		add("session", false, "absent; run `jobs-cli auth linkedin login` for authenticated LinkedIn")
 	}
