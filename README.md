@@ -41,6 +41,15 @@ brew install --HEAD thedavidweng/tap/jobs-cli
 go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@latest
 ```
 
+This requires the Go toolchain version declared in [`go.mod`](go.mod) (currently
+Go 1.27.1); install it from [go.dev/dl](https://go.dev/dl/) rather than a distro
+package, which can lag behind.
+
+`go install` builds carry reduced version metadata: the toolchain records the
+module version but not full VCS provenance, so `jobs-cli version` may print
+`(commit: none, date: unknown, built by: unknown)`. Release archives and the
+Homebrew cask are built with complete commit, date, and builder metadata.
+
 ### Build from source
 
 ```shell
@@ -72,6 +81,14 @@ jobs-cli doctor
 jobs-cli sources status
 ```
 
+Indeed discovery needs no login: `search` reaches Indeed and LinkedIn Guest
+anonymously, and `sources status` reports the Indeed discovery Source with
+`auth_required=false`. The one optional login is `auth linkedin login`, which
+imports a LinkedIn Session for authenticated LinkedIn (Voyager) search and
+LinkedIn Easy Apply; `auth status` reports only that per-profile LinkedIn
+Session. Applying through Indeed is a separate Application Provider path and
+stays browser-required.
+
 ## Command surface
 
 ```text
@@ -91,8 +108,17 @@ contract: [`JSON_SCHEMA.md`](JSON_SCHEMA.md).
 
 ## Configuration
 
-`~/.jobs-cli/config.yaml` carries named profiles. The market (default `US`)
-drives Indeed's country/locale headers and source URLs:
+The config file is `<config-dir>/config.yaml`, where `<config-dir>` defaults to:
+
+- macOS: `~/.jobs-cli`
+- Linux: `${XDG_CONFIG_HOME:-~/.config}/jobs-cli`
+- Windows: `%APPDATA%\jobs-cli`, falling back to `~/.jobs-cli` when `%APPDATA%`
+  is unavailable
+
+`JOBS_CONFIG_DIR` overrides the default directory on every platform.
+
+It carries named profiles. The market (default `US`) drives Indeed's
+country/locale headers and source URLs:
 
 ```yaml
 profiles:
