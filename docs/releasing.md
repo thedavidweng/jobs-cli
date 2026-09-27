@@ -25,18 +25,17 @@ repository, workflow files, issues, or logs.
 5. GoReleaser builds archives for macOS, Linux, and Windows, creates the GitHub
    Release, and updates `Casks/jobs-cli.rb` in `homebrew-tap`.
 
-The version baseline lives in `.release-please-manifest.json` (currently
-`0.0.0`; no release has shipped yet). Each Release Please pull request bumps it
-together with `CHANGELOG.md`.
+The version baseline lives in `.release-please-manifest.json`. Each Release
+Please pull request bumps it together with `CHANGELOG.md`.
 
-Until the first stable release is published, install the source-built formula:
-
-```shell
-brew install --HEAD thedavidweng/tap/jobs-cli
-```
-
-After a stable release, install the generated cask:
+Install the released cask:
 
 ```shell
 brew install --cask thedavidweng/tap/jobs-cli
+```
+
+To build the current `main` branch from source instead, use the formula:
+
+```shell
+brew install --HEAD thedavidweng/tap/jobs-cli
 ```
