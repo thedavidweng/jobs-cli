@@ -108,9 +108,16 @@ type indeedSearchData struct {
 
 type indeedPartition struct {
 	Source     string              `json:"source"`
+	Market     *indeedMarket       `json:"market"`
 	Jobs       []indeedJob         `json:"jobs"`
 	Pagination *indeedPagination   `json:"pagination"`
 	Error      *indeedPartitionErr `json:"error"`
+}
+
+type indeedMarket struct {
+	Country string `json:"country"`
+	Locale  string `json:"locale"`
+	Origin  string `json:"origin"`
 }
 
 type indeedPartitionErr struct {
@@ -196,6 +203,9 @@ func TestSearchIndeedCommandReturnsNormalizedPartition(t *testing.T) {
 	if transport.app != "appv=193.1; appid=com.indeed.jobsearch; osv=16.6.1; os=ios; dtype=phone" {
 		t.Fatalf("indeed-app-info = %q", transport.app)
 	}
+	if transport.co != "CA" || transport.locale != "en-CA" {
+		t.Fatalf("market headers = %q/%q, want CA/en-CA inferred from --location", transport.co, transport.locale)
+	}
 	for _, want := range []string{`what: "software engineer"`, `location: {where: "Vancouver, BC"`, "jobSearch("} {
 		if !strings.Contains(indeedQuery(t, transport.body), want) {
 			t.Errorf("outgoing GraphQL query missing %q:\n%s", want, indeedQuery(t, transport.body))
@@ -208,6 +218,9 @@ func TestSearchIndeedCommandReturnsNormalizedPartition(t *testing.T) {
 	partition := doc.Data.Partitions[0]
 	if partition.Source != "indeed" || partition.Error != nil {
 		t.Fatalf("partition = %+v, want a successful indeed partition", partition)
+	}
+	if partition.Market == nil || *partition.Market != (indeedMarket{Country: "CA", Locale: "en-CA", Origin: "location"}) {
+		t.Fatalf("partition market = %+v, want CA/en-CA from the location", partition.Market)
 	}
 	if len(partition.Jobs) != 3 {
 		t.Fatalf("indeed jobs = %d, want 3", len(partition.Jobs))
@@ -226,7 +239,7 @@ func TestSearchIndeedCommandReturnsNormalizedPartition(t *testing.T) {
 	if first.Workplace != "remote" || !first.Remote {
 		t.Errorf("first workplace = %q remote=%v, want remote", first.Workplace, first.Remote)
 	}
-	if first.SourceURL != "https://www.indeed.com/viewjob?jk=b8ef297959c26ac5" {
+	if first.SourceURL != "https://ca.indeed.com/viewjob?jk=b8ef297959c26ac5" {
 		t.Errorf("first source url = %q", first.SourceURL)
 	}
 	if first.ApplicationURL != "https://jobs.ashbyhq.com/serverobotics/0b9f3986-9ae6-4361-85b5-2e1edc6e10e2?utm_source=j20ZWL4oeG" {
@@ -274,7 +287,7 @@ func TestSearchIndeedCommandContinuesWithCursor(t *testing.T) {
 		respond: func(int) *http.Response { return indeedFixture(t, "search_last_page.json") },
 	}
 	doc := runIndeedSearch(t, transport,
-		"--json", "search", "--query", "software engineer", "--source", "indeed", "--cursor", indeedNextCursor)
+		"--json", "search", "--query", "software engineer", "--source", "indeed", "--cursor", indeedNextCursor, "--country", "CA")
 
 	if !strings.Contains(indeedQuery(t, transport.body), `cursor: "`+indeedNextCursor+`"`) {
 		t.Errorf("continuation query did not carry the cursor:\n%s", indeedQuery(t, transport.body))
@@ -291,49 +304,84 @@ func TestSearchIndeedCommandContinuesWithCursor(t *testing.T) {
 	}
 }
 
-func TestSearchIndeedMarketComesFromProfileEnvAndFlags(t *testing.T) {
+func TestSearchIndeedMarketComesFromFlagsLocationEnvAndProfile(t *testing.T) {
+	t.Setenv("JOBS_COUNTRY", "")
+	t.Setenv("JOBS_LOCALE", "")
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte("profiles:\n  default:\n    country: CA\n    locale: en-CA\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	transport := &indeedTransport{
-		t:       t,
-		respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
-	}
-	doc := runIndeedSearchDir(t, dir, transport, "--json", "search", "-q", "software engineer", "--source", "indeed")
-	if transport.co != "CA" || transport.locale != "en-CA" {
-		t.Fatalf("outgoing market headers = %q/%q, want CA/en-CA from the profile", transport.co, transport.locale)
-	}
-	if len(doc.Data.Partitions) != 1 || len(doc.Data.Partitions[0].Jobs) != 3 {
-		t.Fatalf("partitions = %+v", doc.Data.Partitions)
-	}
-	if got := doc.Data.Partitions[0].Jobs[0].SourceURL; got != "https://ca.indeed.com/viewjob?jk=b8ef297959c26ac5" {
-		t.Fatalf("job source url = %q, want the ca.indeed.com market host", got)
-	}
-
-	t.Run("flag overrides profile and env", func(t *testing.T) {
-		t.Setenv("JOBS_COUNTRY", "GB")
+	search := func(t *testing.T, args ...string) (*indeedTransport, indeedPartition) {
+		t.Helper()
 		transport := &indeedTransport{
 			t:       t,
 			respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
 		}
-		runIndeedSearchDir(t, dir, transport, "--json", "search", "-q", "software engineer", "--source", "indeed", "--country", "US")
-		if transport.co != "US" {
-			t.Fatalf("outgoing indeed-co = %q, want the flag-provided US over profile CA and env GB", transport.co)
+		doc := runIndeedSearchDir(t, dir, transport, append([]string{"--json", "search", "-q", "software engineer", "--source", "indeed"}, args...)...)
+		if len(doc.Data.Partitions) != 1 || len(doc.Data.Partitions[0].Jobs) != 3 || doc.Data.Partitions[0].Market == nil {
+			t.Fatalf("partitions = %+v, want one indeed partition that echoes its market", doc.Data.Partitions)
+		}
+		return transport, doc.Data.Partitions[0]
+	}
+
+	transport, partition := search(t)
+	if transport.co != "CA" || transport.locale != "en-CA" || partition.Market.Origin != "profile" {
+		t.Fatalf("market = %q/%q echoed as %+v, want CA/en-CA from the profile", transport.co, transport.locale, partition.Market)
+	}
+	if got := partition.Jobs[0].SourceURL; got != "https://ca.indeed.com/viewjob?jk=b8ef297959c26ac5" {
+		t.Fatalf("job source url = %q, want the ca.indeed.com host of the job's country", got)
+	}
+
+	t.Run("flag overrides location, env, and profile", func(t *testing.T) {
+		t.Setenv("JOBS_COUNTRY", "GB")
+		transport, partition := search(t, "-l", "Vancouver, BC", "--country", "US")
+		if transport.co != "US" || transport.locale != "en-US" || partition.Market.Origin != "flag" {
+			t.Fatalf("market = %q/%q from %s, want the flag-provided US", transport.co, transport.locale, partition.Market.Origin)
+		}
+	})
+
+	t.Run("location overrides env and profile", func(t *testing.T) {
+		t.Setenv("JOBS_COUNTRY", "GB")
+		transport, partition := search(t, "-l", "Seattle, WA")
+		if transport.co != "US" || transport.locale != "en-US" || partition.Market.Origin != "location" {
+			t.Fatalf("market = %q/%q from %s, want US inferred from the location", transport.co, transport.locale, partition.Market.Origin)
 		}
 	})
 
 	t.Run("env overrides profile", func(t *testing.T) {
 		t.Setenv("JOBS_COUNTRY", "GB")
 		t.Setenv("JOBS_LOCALE", "en-GB")
-		transport := &indeedTransport{
-			t:       t,
-			respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
-		}
-		runIndeedSearchDir(t, dir, transport, "--json", "search", "-q", "software engineer", "--source", "indeed")
-		if transport.co != "GB" || transport.locale != "en-GB" {
-			t.Fatalf("outgoing market headers = %q/%q, want GB/en-GB from the environment", transport.co, transport.locale)
+		transport, partition := search(t, "-l", "London")
+		if transport.co != "GB" || transport.locale != "en-GB" || partition.Market.Origin != "env" {
+			t.Fatalf("market = %q/%q from %s, want GB/en-GB from the environment", transport.co, transport.locale, partition.Market.Origin)
 		}
 	})
+}
+
+func TestSearchIndeedWithoutAMarketSendsNoRequest(t *testing.T) {
+	t.Setenv("JOBS_COUNTRY", "")
+	transport := &indeedTransport{
+		t:       t,
+		respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
+	}
+	var stdout, stderr bytes.Buffer
+	app := cli.New(&cli.Options{Stdout: &stdout, Stderr: &stderr, ConfigDir: t.TempDir(), BaseTransport: transport})
+	code := app.Run([]string{"--json", "search", "-q", "software engineer", "-l", "Vancouver", "--source", "indeed"})
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (stdout: %s, stderr: %s)", code, stdout.String(), stderr.String())
+	}
+	var doc struct {
+		OK    bool                `json:"ok"`
+		Error *indeedPartitionErr `json:"error"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &doc); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\n%s", err, stdout.String())
+	}
+	if doc.OK || doc.Error == nil || doc.Error.Code != "MARKET_REQUIRED" {
+		t.Fatalf("envelope = %+v, want MARKET_REQUIRED", doc)
+	}
+	if transport.calls != 0 {
+		t.Fatalf("indeed HTTP calls = %d, want none without a market", transport.calls)
+	}
 }

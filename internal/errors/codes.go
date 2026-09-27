@@ -20,6 +20,7 @@ const (
 	NotImplemented       Code = "NOT_IMPLEMENTED"
 
 	SourceUnavailable           Code = "SOURCE_UNAVAILABLE"
+	MarketRequired              Code = "MARKET_REQUIRED"
 	ATSResolutionFailed         Code = "ATS_RESOLUTION_FAILED"
 	NativeApplyUnsupported      Code = "NATIVE_APPLY_UNSUPPORTED"
 	BrowserRequired             Code = "BROWSER_REQUIRED"
@@ -62,6 +63,7 @@ var exitCodes = map[Code]int{
 	ArtifactStale:               7,
 	ConfirmationRequired:        10,
 	InvalidArguments:            2,
+	MarketRequired:              2,
 	NotImplemented:              1,
 	InternalError:               1,
 }

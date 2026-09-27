@@ -14,7 +14,7 @@ import (
 )
 
 func searchKeywords() *domain.SearchRequest {
-	return &domain.SearchRequest{Keywords: "software engineer", Location: "Vancouver, BC"}
+	return &domain.SearchRequest{Keywords: "software engineer", Location: "Vancouver, BC", Market: searchMarket("CA", "en-CA")}
 }
 
 func TestSearchAntiBotHTMLIsAnAPIError(t *testing.T) {
@@ -136,6 +136,7 @@ func TestSearchGraphQLError(t *testing.T) {
 		Keywords: "software engineer",
 		Location: "Vancouver, BC",
 		Cursor:   "stale-cursor",
+		Market:   searchMarket("CA", "en-CA"),
 	})
 	e := requireErrorCode(t, err, joberrors.APIError)
 	if !strings.Contains(e.Message, "Invalid cursor token") {

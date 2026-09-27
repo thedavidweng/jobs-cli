@@ -11,11 +11,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/thedavidweng/jobs-cli/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
 	"github.com/thedavidweng/jobs-cli/internal/httpclient"
 )
 
-func (s *Source) call(ctx context.Context, query string, mkt market) ([]byte, *joberrors.Error) {
+func (s *Source) call(ctx context.Context, query string, mkt *domain.Market) ([]byte, *joberrors.Error) {
 	payload, err := json.Marshal(graphQLRequest{Query: query})
 	if err != nil {
 		return nil, internalError("encode indeed GraphQL request", err)
@@ -27,12 +28,12 @@ func (s *Source) call(ctx context.Context, query string, mkt market) ([]byte, *j
 	req.Host = "apis.indeed.com"
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("accept", "application/json")
-	req.Header.Set("accept-language", mkt.acceptLanguage())
+	req.Header.Set("accept-language", acceptLanguage(mkt.Locale))
 	req.Header.Set("user-agent", userAgent)
 	req.Header.Set("indeed-api-key", apiKey)
 	req.Header.Set("indeed-app-info", appInfo)
-	req.Header.Set("indeed-locale", mkt.locale)
-	req.Header.Set("indeed-co", mkt.country)
+	req.Header.Set("indeed-locale", mkt.Locale)
+	req.Header.Set("indeed-co", mkt.Country)
 
 	resp, err := s.client().Do(req)
 	if err != nil {

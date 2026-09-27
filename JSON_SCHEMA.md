@@ -66,7 +66,9 @@ go to stderr.
 
 `application` (an Application Target) is attached only when explicitly resolved.
 Provider-specific raw payloads never appear in the top-level contract; with
-`--full`, `diagnostics.source_payload` carries them for debugging.
+`--full`, `diagnostics.source_payload` carries them for debugging. An Indeed
+Job's `source_url` points at the job's own country site (for example
+`ca.indeed.com` for a job in Canada).
 
 ### Search Result
 
@@ -78,6 +80,7 @@ ranking:
   "partitions": [
     {
       "source": "indeed",
+      "market": { "country": "CA", "locale": "en-CA", "origin": "location" },
       "jobs": [ { "id": "indeed:...", "title": "...", "...": "..." } ],
       "pagination": {
         "limit": 25,
@@ -96,6 +99,13 @@ ranking:
   ]
 }
 ```
+
+The indeed partition carries `market`, the country and locale it searched.
+`origin` names the input that chose the country: `flag` (`--country`),
+`location` (the end of `--location`), `env` (`JOBS_COUNTRY`), or `profile`.
+Indeed has no default market, so when none resolves, the indeed partition has
+no `market` and fails with `MARKET_REQUIRED`. Other Sources never carry
+`market`.
 
 `meta.partitions` mirrors per-partition pagination. Native pagination models
 (cursor, offset, and start/count) are preserved under `pagination.native`
@@ -218,6 +228,9 @@ Jobs-specific v1 codes (stable once shipped; new codes may be added later
 without renaming these):
 
 - `SOURCE_UNAVAILABLE` (5): a requested discovery source is unavailable.
+- `MARKET_REQUIRED` (2): an Indeed search has no market, because `--country`,
+  the end of `--location`, `JOBS_COUNTRY`, and the profile `country` all name
+  none. It fails only the indeed partition.
 - `ATS_RESOLUTION_FAILED` (6): the application target could not be resolved.
 - `NATIVE_APPLY_UNSUPPORTED` (6): no native application implementation exists
   for the provider.

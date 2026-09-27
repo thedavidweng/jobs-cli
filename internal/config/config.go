@@ -34,6 +34,19 @@ type Config struct {
 	ProfileName string   `yaml:"-"`
 	Active      *Profile `yaml:"-"`
 	Path        string   `yaml:"-"`
+
+	envCountry string
+	envLocale  string
+}
+
+// MarketSettings are the configured Indeed market values per layer. They stay
+// separate because search ranks the environment above the profile and reports
+// which layer chose the market.
+type MarketSettings struct {
+	EnvCountry     string
+	EnvLocale      string
+	ProfileCountry string
+	ProfileLocale  string
 }
 
 func DefaultSources() []string {
@@ -158,12 +171,8 @@ func (c *Config) resolve() {
 			prof.Sources = names
 		}
 	}
-	if v := strings.TrimSpace(os.Getenv("JOBS_COUNTRY")); v != "" {
-		prof.Country = v
-	}
-	if v := strings.TrimSpace(os.Getenv("JOBS_LOCALE")); v != "" {
-		prof.Locale = v
-	}
+	c.envCountry = strings.TrimSpace(os.Getenv("JOBS_COUNTRY"))
+	c.envLocale = strings.TrimSpace(os.Getenv("JOBS_LOCALE"))
 	c.Active = prof
 }
 
@@ -174,11 +183,13 @@ func (c *Config) Sources() []string {
 	return c.Active.Sources
 }
 
-func (c *Config) Market() (country, locale string) {
-	if c.Active == nil {
-		return "", ""
+func (c *Config) Market() MarketSettings {
+	settings := MarketSettings{EnvCountry: c.envCountry, EnvLocale: c.envLocale}
+	if c.Active != nil {
+		settings.ProfileCountry = c.Active.Country
+		settings.ProfileLocale = c.Active.Locale
 	}
-	return c.Active.Country, c.Active.Locale
+	return settings
 }
 
 func (c *Config) Dir() string {

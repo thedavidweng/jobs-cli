@@ -50,6 +50,12 @@ func newSource(r *recorder) domain.SourceAdapter {
 	return indeed.NewSource(testutil.NewClient(testutil.RoundTripFunc(r.RoundTrip)))
 }
 
+func searchMarket(country, locale string) *domain.Market {
+	return &domain.Market{Country: country, Locale: locale, Origin: domain.MarketFromFlag}
+}
+
+func usMarket() *domain.Market { return searchMarket("US", "en-US") }
+
 func fixture(t *testing.T, name string) string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", name))
@@ -101,6 +107,7 @@ func TestSearchSendsPinnedMobileClientRequest(t *testing.T) {
 		Keywords: "software engineer",
 		Location: "Vancouver, BC",
 		Limit:    25,
+		Market:   usMarket(),
 	}); err != nil {
 		t.Fatalf("search: %v", err)
 	}
@@ -142,6 +149,7 @@ func TestSearchSendsPinnedMobileClientRequest(t *testing.T) {
 		"sort: RELEVANCE",
 		"pageInfo {",
 		"nextCursor",
+		"countryCode",
 		"recruit {",
 		"viewJobUrl",
 		"attributes {",
@@ -158,6 +166,7 @@ func TestSearchPropagatesKeywordsLocationAndEscaping(t *testing.T) {
 		Keywords: `senior "go" engineer\platform`,
 		Location: "Vancouver, BC",
 		Cursor:   `cur"sor`,
+		Market:   usMarket(),
 	}); err != nil {
 		t.Fatalf("search: %v", err)
 	}
@@ -173,7 +182,7 @@ func TestSearchPropagatesKeywordsLocationAndEscaping(t *testing.T) {
 	}
 
 	r = &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
-	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Location: "Vancouver, BC"}); err != nil {
+	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Location: "Vancouver, BC", Market: usMarket()}); err != nil {
 		t.Fatalf("location-only search: %v", err)
 	}
 	if query := queryText(t, r.body); strings.Contains(query, "what:") {
@@ -190,6 +199,7 @@ func TestSearchMapsLimitRadiusSortAndRemoteFilter(t *testing.T) {
 		Sort:     "date",
 		Limit:    500,
 		Remote:   func() *bool { v := true; return &v }(),
+		Market:   usMarket(),
 	}); err != nil {
 		t.Fatalf("search: %v", err)
 	}
@@ -210,6 +220,7 @@ func TestSearchMapsLimitRadiusSortAndRemoteFilter(t *testing.T) {
 	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{
 		Keywords: "platform engineer",
 		Remote:   &remote,
+		Market:   usMarket(),
 	}); err != nil {
 		t.Fatalf("search: %v", err)
 	}
@@ -227,7 +238,7 @@ func TestSearchCursorPaginationRoundtrip(t *testing.T) {
 	}}
 	source := newSource(r)
 
-	first, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "go", Location: "Vancouver, BC", Limit: 25})
+	first, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "go", Location: "Vancouver, BC", Limit: 25, Market: usMarket()})
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -246,6 +257,7 @@ func TestSearchCursorPaginationRoundtrip(t *testing.T) {
 		Location: "Vancouver, BC",
 		Limit:    25,
 		Cursor:   first.Pagination.NextCursor,
+		Market:   usMarket(),
 	})
 	if err != nil {
 		t.Fatalf("second page: %v", err)
@@ -267,6 +279,7 @@ func TestSearchNormalizesVerifiedResponseShape(t *testing.T) {
 		Keywords: "software engineer",
 		Location: "Vancouver, BC",
 		Limit:    25,
+		Market:   searchMarket("CA", "en-CA"),
 	})
 	if err != nil {
 		t.Fatalf("search: %v", err)
@@ -297,7 +310,7 @@ func TestSearchNormalizesVerifiedResponseShape(t *testing.T) {
 	if first.Workplace != domain.WorkplaceRemote || !first.Remote {
 		t.Errorf("first workplace = %s remote=%v, want remote", first.Workplace, first.Remote)
 	}
-	if first.SourceURL != "https://www.indeed.com/viewjob?jk="+firstJobKey {
+	if first.SourceURL != "https://ca.indeed.com/viewjob?jk="+firstJobKey {
 		t.Errorf("first source url = %q", first.SourceURL)
 	}
 	if first.ApplicationURL != "https://jobs.ashbyhq.com/serverobotics/0b9f3986-9ae6-4361-85b5-2e1edc6e10e2?utm_source=j20ZWL4oeG" {
@@ -356,6 +369,7 @@ func TestSearchPreservesAttributesAndProviderPayloadAsDiagnostics(t *testing.T) 
 	partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{
 		Keywords: "software engineer",
 		Location: "Vancouver, BC",
+		Market:   usMarket(),
 	})
 	if err != nil {
 		t.Fatalf("search: %v", err)
@@ -382,6 +396,7 @@ func TestSearchJobsUseTheDomainContractOnly(t *testing.T) {
 	partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{
 		Keywords: "software engineer",
 		Location: "Vancouver, BC",
+		Market:   usMarket(),
 	})
 	if err != nil {
 		t.Fatalf("search: %v", err)
@@ -460,7 +475,7 @@ func TestSearchCompensationVariants(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &recorder{t: t, respond: func(int) *http.Response { return testutil.JSONResponse(http.StatusOK, tc.body) }}
-			partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "engineer"})
+			partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "engineer", Market: usMarket()})
 			if err != nil {
 				t.Fatalf("search: %v", err)
 			}
@@ -495,54 +510,88 @@ func sameFloat(got, want *float64) bool {
 	return *got == *want
 }
 
-func TestSearchSendsConfiguredCAMarket(t *testing.T) {
-	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
-	partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{
-		Keywords: "software engineer",
-		Location: "Vancouver, BC",
-		Country:  "CA",
-		Locale:   "en-CA",
-	})
-	if err != nil {
-		t.Fatalf("search: %v", err)
+func TestSearchSendsTheRequestedMarket(t *testing.T) {
+	cases := []struct {
+		market                   *domain.Market
+		co, locale, acceptLocale string
+	}{
+		{searchMarket("CA", "en-CA"), "CA", "en-CA", "en-CA,en;q=0.9"},
+		{searchMarket("CA", "fr-CA"), "CA", "fr-CA", "fr-CA,fr;q=0.9"},
+		{searchMarket("GB", "en-GB"), "GB", "en-GB", "en-GB,en;q=0.9"},
 	}
-	req := r.request
-	for _, header := range []struct{ name, want string }{
-		{"Indeed-Locale", "en-CA"},
-		{"Indeed-Co", "CA"},
-		{"Accept-Language", "en-CA,en;q=0.9"},
-	} {
-		if got := req.Header.Get(header.name); got != header.want {
-			t.Errorf("%s = %q, want %q", header.name, got, header.want)
-		}
-	}
-	if len(partition.Jobs) != 3 {
-		t.Fatalf("jobs = %d, want 3", len(partition.Jobs))
-	}
-	for _, job := range partition.Jobs {
-		if job.SourceURL != "https://ca.indeed.com/viewjob?jk="+job.SourceJobID {
-			t.Errorf("job %s source url = %q, want the ca.indeed.com market host", job.ID, job.SourceURL)
-		}
+	for _, tc := range cases {
+		t.Run(tc.market.Country+"/"+tc.market.Locale, func(t *testing.T) {
+			r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
+			if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "software engineer", Market: tc.market}); err != nil {
+				t.Fatalf("search: %v", err)
+			}
+			for _, header := range []struct{ name, want string }{
+				{"Indeed-Co", tc.co},
+				{"Indeed-Locale", tc.locale},
+				{"Accept-Language", tc.acceptLocale},
+			} {
+				if got := r.request.Header.Get(header.name); got != header.want {
+					t.Errorf("%s = %q, want %q", header.name, got, header.want)
+				}
+			}
+		})
 	}
 }
 
-func TestSearchDerivesLocaleFromCountryAndCountryFromLocale(t *testing.T) {
+func TestSearchRequiresAResolvedMarket(t *testing.T) {
+	cases := []struct {
+		name   string
+		market *domain.Market
+		want   joberrors.Code
+	}{
+		{name: "no market", market: nil, want: joberrors.MarketRequired},
+		{name: "no locale", market: &domain.Market{Country: "CA"}, want: joberrors.MarketRequired},
+		{name: "not an Indeed market", market: searchMarket("XX", "en-XX"), want: joberrors.InvalidArguments},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
+			_, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "go", Market: tc.market})
+			e := requireErrorCode(t, err, tc.want)
+			if e.Category != joberrors.CatValidation {
+				t.Errorf("category = %s, want validation", e.Category)
+			}
+			if r.calls != 0 {
+				t.Fatalf("a search without a usable market still made %d HTTP calls", r.calls)
+			}
+		})
+	}
+}
+
+func TestSearchSourceURLFollowsTheJobCountry(t *testing.T) {
 	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
-	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "go", Country: "ca"}); err != nil {
+	partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "go", Market: usMarket()})
+	if err != nil {
 		t.Fatalf("search: %v", err)
 	}
-	if got := r.request.Header.Get("Indeed-Locale"); got != "en-CA" {
-		t.Errorf("Indeed-Locale = %q, want the derived en-CA", got)
-	}
-	if got := r.request.Header.Get("Indeed-Co"); got != "CA" {
-		t.Errorf("Indeed-Co = %q, want CA", got)
+	for _, job := range partition.Jobs {
+		if job.SourceURL != "https://ca.indeed.com/viewjob?jk="+job.SourceJobID {
+			t.Errorf("job %s source url = %q, want the host of the job's own country (CA)", job.ID, job.SourceURL)
+		}
 	}
 
-	r = &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
-	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "go", Locale: "en-CA"}); err != nil {
-		t.Fatalf("search: %v", err)
+	cases := []struct {
+		name string
+		body string
+	}{
+		{name: "no country code", body: fixture(t, "search_last_page.json")},
+		{name: "country outside the market list", body: `{"data":{"jobSearch":{"pageInfo":{"nextCursor":null},"results":[{"job":{"key":"eeee1111f222f333","title":"Job A","location":{"countryCode":"PR"}}}]}}}`},
 	}
-	if got := r.request.Header.Get("Indeed-Co"); got != "CA" {
-		t.Errorf("Indeed-Co = %q, want the locale-derived CA", got)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &recorder{t: t, respond: func(int) *http.Response { return testutil.JSONResponse(http.StatusOK, tc.body) }}
+			partition, err := newSource(r).Search(context.Background(), &domain.SearchRequest{Keywords: "go", Market: searchMarket("GB", "en-GB")})
+			if err != nil {
+				t.Fatalf("search: %v", err)
+			}
+			if got := partition.Jobs[0].SourceURL; got != "https://uk.indeed.com/viewjob?jk=eeee1111f222f333" {
+				t.Fatalf("source url = %q, want the searched market's host", got)
+			}
+		})
 	}
 }

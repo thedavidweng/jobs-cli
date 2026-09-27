@@ -21,6 +21,12 @@ func (s Source) Valid() bool {
 	}
 }
 
+// MarketScoped reports whether the Source searches one country's index, so a
+// search must resolve a Market before calling it.
+func (s Source) MarketScoped() bool {
+	return s == SourceIndeed
+}
+
 func FormatJobID(source Source, sourceJobID string) string {
 	return string(source) + ":" + sourceJobID
 }

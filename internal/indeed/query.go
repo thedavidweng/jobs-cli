@@ -28,6 +28,7 @@ const searchQueryTemplate = `query GetJobData {
 					name
 				}
 				location {
+					countryCode
 					formatted {
 						short
 						long
@@ -96,6 +97,7 @@ const detailQueryTemplate = `query GetJobData {
 					}
 				}
 				location {
+					countryCode
 					formatted {
 						short
 						long

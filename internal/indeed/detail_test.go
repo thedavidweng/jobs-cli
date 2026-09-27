@@ -25,7 +25,7 @@ func TestDetailBatchRequestAndNormalization(t *testing.T) {
 	if !strings.Contains(query, `jobData(jobKeys: ["`+detailJobKey+`"])`) {
 		t.Errorf("detail request is not a jobKeys batch:\n%s", query)
 	}
-	for _, want := range []string{"description {", "html", "employer {", "dossier {", "corporateWebsite", "recruit {", "viewJobUrl", "attributes {"} {
+	for _, want := range []string{"description {", "html", "employer {", "dossier {", "corporateWebsite", "countryCode", "recruit {", "viewJobUrl", "attributes {"} {
 		if !strings.Contains(query, want) {
 			t.Errorf("detail query missing %q:\n%s", want, query)
 		}
@@ -58,8 +58,8 @@ func TestDetailBatchRequestAndNormalization(t *testing.T) {
 	if job.ApplicationURL != "https://jobs.ashbyhq.com/serverobotics/517ca3fd71acddc9" {
 		t.Errorf("application url = %q", job.ApplicationURL)
 	}
-	if job.SourceURL != "https://www.indeed.com/viewjob?jk="+detailJobKey {
-		t.Errorf("source url = %q", job.SourceURL)
+	if job.SourceURL != "https://ca.indeed.com/viewjob?jk="+detailJobKey {
+		t.Errorf("source url = %q, want the host of the job's own country (CA)", job.SourceURL)
 	}
 
 	if job.Diagnostics == nil || len(job.Diagnostics.SourcePayload) == 0 {
@@ -73,17 +73,29 @@ func TestDetailBatchRequestAndNormalization(t *testing.T) {
 	}
 }
 
-func TestDetailUsesConfiguredMarketForSourceURL(t *testing.T) {
+func TestDetailNeedsNoMarket(t *testing.T) {
 	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "detail.json") }}
-	job, err := newSource(r).Detail(context.Background(), &domain.DetailRequest{SourceJobID: detailJobKey, Country: "CA", Locale: "en-CA"})
+	if _, err := newSource(r).Detail(context.Background(), &domain.DetailRequest{SourceJobID: detailJobKey}); err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+	for _, header := range []struct{ name, want string }{
+		{"Indeed-Co", "US"},
+		{"Indeed-Locale", "en-US"},
+		{"Accept-Language", "en-US,en;q=0.9"},
+	} {
+		if got := r.request.Header.Get(header.name); got != header.want {
+			t.Errorf("%s = %q, want the pinned bundle's %q", header.name, got, header.want)
+		}
+	}
+
+	body := `{"data":{"jobData":{"results":[{"job":{"key":"` + detailJobKey + `","title":"Senior Backend Engineer"}}]}}}`
+	r = &recorder{t: t, respond: func(int) *http.Response { return testutil.JSONResponse(http.StatusOK, body) }}
+	job, err := newSource(r).Detail(context.Background(), &domain.DetailRequest{SourceJobID: detailJobKey})
 	if err != nil {
 		t.Fatalf("detail: %v", err)
 	}
-	if job.SourceURL != "https://ca.indeed.com/viewjob?jk="+detailJobKey {
-		t.Errorf("source url = %q, want the ca.indeed.com market host", job.SourceURL)
-	}
-	if got := r.request.Header.Get("Indeed-Co"); got != "CA" {
-		t.Errorf("Indeed-Co = %q, want CA", got)
+	if job.SourceURL != "https://www.indeed.com/viewjob?jk="+detailJobKey {
+		t.Errorf("source url = %q, want www.indeed.com for a job without a country", job.SourceURL)
 	}
 }
 

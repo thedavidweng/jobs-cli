@@ -126,8 +126,11 @@ The config file is `<config-dir>/config.yaml`, where `<config-dir>` defaults to:
 
 `JOBS_CONFIG_DIR` overrides the default directory on every platform.
 
-It carries named profiles. The market (default `US`) drives Indeed's
-country/locale headers and source URLs:
+It carries named profiles. Indeed searches one country at a time (its market),
+and there is no default market. `search` takes the market from `--country`,
+else from the end of `--location` (a US state, Canadian province, or country,
+such as `"Austin, TX"` or `"London, United Kingdom"`), else from
+`JOBS_COUNTRY`, else from the profile:
 
 ```yaml
 profiles:
@@ -136,8 +139,8 @@ profiles:
     locale: en-CA
 ```
 
-`JOBS_COUNTRY` / `JOBS_LOCALE` override the profile; `search --country` /
-`--locale` override both.
+If none of these names a market, the Indeed results fail with
+`MARKET_REQUIRED` and the other sources still run.
 
 Product specification: [`docs/spec.md`](docs/spec.md). Domain glossary:
 [`CONTEXT.md`](CONTEXT.md). Architecture decisions: [`docs/adr/`](docs/adr/).

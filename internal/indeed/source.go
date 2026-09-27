@@ -8,6 +8,7 @@ import (
 
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/internal/market"
 )
 
 type Source struct {
@@ -22,12 +23,11 @@ func (s *Source) Search(ctx context.Context, req *domain.SearchRequest) (*domain
 	if err := validateSearch(req); err != nil {
 		return nil, err
 	}
-	mkt := marketFor(req.Country, req.Locale)
-	body, err := s.call(ctx, searchQuery(req), mkt)
+	body, err := s.call(ctx, searchQuery(req), req.Market)
 	if err != nil {
 		return nil, err
 	}
-	jobs, nextCursor, perr := parseSearchResponse(body, mkt)
+	jobs, nextCursor, perr := parseSearchResponse(body, req.Market.Country)
 	if perr != nil {
 		return nil, perr
 	}
@@ -48,12 +48,11 @@ func (s *Source) Detail(ctx context.Context, req *domain.DetailRequest) (*domain
 		return nil, invalidArguments("a source job ID is required")
 	}
 	key := strings.TrimPrefix(strings.TrimSpace(req.SourceJobID), string(domain.SourceIndeed)+":")
-	mkt := marketFor(req.Country, req.Locale)
-	body, err := s.call(ctx, detailQuery(key), mkt)
+	body, err := s.call(ctx, detailQuery(key), &detailMarket)
 	if err != nil {
 		return nil, err
 	}
-	job, perr := parseDetailResponse(body, key, mkt)
+	job, perr := parseDetailResponse(body, key, detailMarket.Country)
 	if perr != nil {
 		return nil, perr
 	}
@@ -72,6 +71,12 @@ func validateSearch(req *domain.SearchRequest) *joberrors.Error {
 	}
 	if _, ok := sortArgument(req.Sort); !ok {
 		return invalidArguments(fmt.Sprintf("unsupported sort %q for indeed; supported values: relevance, date", req.Sort))
+	}
+	if req.Market == nil || req.Market.Country == "" || req.Market.Locale == "" {
+		return joberrors.New(joberrors.MarketRequired, "indeed search needs a resolved market (country and locale)", joberrors.CatValidation, false, nil)
+	}
+	if _, ok := market.Host(req.Market.Country); !ok {
+		return invalidArguments(fmt.Sprintf("%q is not an Indeed market", req.Market.Country))
 	}
 	return nil
 }

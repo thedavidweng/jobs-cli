@@ -12,3 +12,5 @@ Jobs adds machine-readable `error.code` values without changing the shared CLI-f
 - `LINKEDIN_EASY_APPLY_UNVERIFIED`
 
 New codes may be added later; these names are stable once shipped.
+
+Supplement (ADR-0021): `MARKET_REQUIRED` joins the set for an Indeed search that resolves no market.
