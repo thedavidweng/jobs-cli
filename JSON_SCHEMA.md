@@ -228,7 +228,7 @@ without renaming these):
 - `ARTIFACT_STALE` (7): remote requirements changed after `apply prepare`;
   prepare again.
 - `LINKEDIN_SESSION_REQUIRED` (3): authenticated LinkedIn was requested but no
-  complete session is stored.
+  complete, valid session is stored (absent, or present but invalid).
 - `LINKEDIN_EASY_APPLY_UNVERIFIED` (6): Easy Apply submission is disabled until
   the current Voyager implementation is verified with a live session.
 

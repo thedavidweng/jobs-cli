@@ -48,10 +48,7 @@ func (s *Source) requireSession() (*config.LinkedInSession, *joberrors.Error) {
 		if errors.Is(err, config.ErrSessionNotFound) {
 			return nil, sessionRequired("LinkedIn session required for authenticated Voyager access; run `jobs-cli auth linkedin login`")
 		}
-		return nil, joberrors.New(joberrors.InternalError, "read LinkedIn session: "+err.Error(), joberrors.CatInternal, false, err)
-	}
-	if !session.Complete() {
-		return nil, sessionRequired("stored LinkedIn session is incomplete (needs li_at and JSESSIONID); run `jobs-cli auth linkedin login`")
+		return nil, sessionRequired("stored LinkedIn session is invalid: " + err.Error() + "; run `jobs-cli auth linkedin login` or `jobs-cli auth linkedin import --from-json -`")
 	}
 	return session, nil
 }

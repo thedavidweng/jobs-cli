@@ -22,5 +22,6 @@ func authLinkedInCmd(a *App) *cobra.Command {
 		Short: "LinkedIn session",
 	}
 	cmd.AddCommand(authLinkedInLoginCmd(a))
+	cmd.AddCommand(authLinkedInImportCmd(a))
 	return cmd
 }

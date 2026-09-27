@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/thedavidweng/jobs-cli/internal/config"
@@ -70,20 +71,80 @@ func TestSessionFilePermissionsAndRoundTrip(t *testing.T) {
 	}
 }
 
-func TestIncompleteSessionIsRejectedByComplete(t *testing.T) {
+func TestIncompleteStoredSessionIsRejectedByLoad(t *testing.T) {
 	store := config.NewSessionStore(t.TempDir())
 	session := config.NewLinkedInSession("default", "chrome", map[string]string{
 		config.CookieLiAt: "only-li-at",
 	})
+	if session.Complete() {
+		t.Fatal("session without JSESSIONID must be incomplete")
+	}
 	if err := store.Save(session); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	loaded, err := store.Load()
-	if err != nil {
-		t.Fatalf("load: %v", err)
+	if _, err := store.Load(); err == nil || !strings.Contains(err.Error(), "JSESSIONID") {
+		t.Fatalf("load = %v, want a validation error naming JSESSIONID", err)
 	}
-	if loaded.Complete() {
-		t.Fatal("session without JSESSIONID must be incomplete")
+}
+
+func TestSessionStatusDistinguishesAbsentInvalidUnreadableAndValid(t *testing.T) {
+	store := config.NewSessionStore(t.TempDir())
+
+	status := store.Status()
+	if status.Present || status.Invalid || status.Complete {
+		t.Fatalf("absent status = %#v", status)
+	}
+
+	if err := os.MkdirAll(store.Dir(), 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(store.Path(), []byte("{not json"), 0o600); err != nil {
+		t.Fatalf("write corrupt session: %v", err)
+	}
+	status = store.Status()
+	if !status.Present || !status.Invalid || status.Complete || status.InvalidReason == "" {
+		t.Fatalf("corrupt status = %#v, want present but invalid with a reason", status)
+	}
+	if !strings.Contains(status.InvalidReason, "not valid JSON") {
+		t.Fatalf("invalid reason = %q, want a JSON parse failure", status.InvalidReason)
+	}
+
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(store.Path(), 0o000); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() {
+			_ = os.Chmod(store.Path(), 0o600)
+		})
+		status = store.Status()
+		if !status.Present || !status.Invalid || status.Complete {
+			t.Fatalf("unreadable status = %#v, want present but invalid", status)
+		}
+		if !strings.Contains(status.InvalidReason, store.Path()) {
+			t.Fatalf("invalid reason = %q, want the unreadable path", status.InvalidReason)
+		}
+		if err := os.Chmod(store.Path(), 0o600); err != nil {
+			t.Fatalf("chmod back: %v", err)
+		}
+	}
+
+	if err := os.Remove(store.Path()); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	session := config.NewLinkedInSession("default", "chrome", map[string]string{
+		config.CookieLiAt:       "li-at-value",
+		config.CookieJSessionID: `"ajax:1234"`,
+	})
+	if err := store.Save(session); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	status = store.Status()
+	if !status.Present || !status.Complete || status.Invalid {
+		t.Fatalf("valid status = %#v", status)
+	}
+
+	if _, err := store.Load(); err != nil {
+		t.Fatalf("load valid session: %v", err)
 	}
 }
 

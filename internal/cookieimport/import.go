@@ -72,7 +72,7 @@ func (i *Importer) importBrowser(ctx context.Context, browser string) (*config.L
 		return nil, sessionRequired("log in to linkedin.com in " + browser + " and ensure its cookie store is available, then retry")
 	}
 	session := config.NewLinkedInSession("default", browser, cookies)
-	session.CSRFToken = strings.Trim(cookies[config.CookieJSessionID], `"`)
+	session.CSRFToken = config.TrimCookieQuotes(cookies[config.CookieJSessionID])
 	return session, nil
 }
 

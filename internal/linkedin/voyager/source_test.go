@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -156,6 +157,26 @@ func TestMissingOrIncompleteSessionIsRequired(t *testing.T) {
 	_, err := source.Search(context.Background(), &domain.SearchRequest{})
 	if got := joberrors.From(err).Code; got != joberrors.LinkedInSessionRequired {
 		t.Fatalf("error code = %s", got)
+	}
+}
+
+func TestInvalidStoredSessionIsRequiredWithReason(t *testing.T) {
+	store := config.NewSessionStore(t.TempDir())
+	if err := os.MkdirAll(store.Dir(), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"schema_version":"1","provider":"linkedin","profile":"default","captured_at":"2026-09-26T12:00:00Z","cookies":{"li_at":"secret"}}`
+	if err := os.WriteFile(store.Path(), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	source := &Source{Sessions: store}
+	_, err := source.Search(context.Background(), &domain.SearchRequest{})
+	e := joberrors.From(err)
+	if e == nil || e.Code != joberrors.LinkedInSessionRequired {
+		t.Fatalf("error = %v, want LINKEDIN_SESSION_REQUIRED", err)
+	}
+	if !strings.Contains(err.Error(), "invalid") || !strings.Contains(err.Error(), "JSESSIONID") {
+		t.Fatalf("error does not explain the invalid session: %v", err)
 	}
 }
 
