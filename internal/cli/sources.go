@@ -60,7 +60,7 @@ func discoverySources() []entryStatus {
 		{
 			Name: "indeed", Mode: "mobile-graphql", Kind: "discovery_source", Role: "discovery",
 			Verification: string(domain.VerifiedWorking),
-			Notes:        "structured mobile GraphQL discovery; external jobs resolve to their provider; Indeed Apply is browser-required",
+			Notes:        "structured mobile GraphQL discovery; external jobs resolve to their provider; Indeed Apply is browser-required; no login required for discovery",
 		},
 		{
 			Name: "linkedin", Mode: "guest", Kind: "discovery_source", Role: "discovery",
