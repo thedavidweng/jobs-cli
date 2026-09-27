@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/thedavidweng/jobs-cli/compare/v2.0.0...v2.0.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* use the /v2 module path so go install finds v2 releases ([811494c](https://github.com/thedavidweng/jobs-cli/commit/811494ce2a6fc8619b8b0ccfd1b0a7d2389f8248))
+
 ## [2.0.0](https://github.com/thedavidweng/jobs-cli/compare/v1.0.0...v2.0.0) (2026-09-27)
 
 
