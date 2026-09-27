@@ -37,8 +37,6 @@ func NewSource(client *http.Client, sessions *config.SessionStore) domain.Source
 	return &Source{Client: client, Sessions: sessions}
 }
 
-func (s *Source) Name() domain.Source { return domain.SourceLinkedIn }
-
 func (s *Source) requireSession() (*config.LinkedInSession, *joberrors.Error) {
 	if s.Sessions == nil {
 		return nil, sessionRequired("no LinkedIn session store configured")

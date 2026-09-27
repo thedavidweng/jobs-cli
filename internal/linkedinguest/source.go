@@ -41,10 +41,6 @@ func NewSource(client *http.Client) domain.SourceAdapter {
 	return &Source{Client: client}
 }
 
-func (s *Source) Name() domain.Source {
-	return domain.SourceLinkedIn
-}
-
 func (s *Source) Search(ctx context.Context, req *domain.SearchRequest) (*domain.SearchPartition, error) {
 	if req == nil {
 		return nil, joberrors.New(joberrors.ValidationFailed, "a search request is required", joberrors.CatValidation, false, nil)

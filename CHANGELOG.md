@@ -15,7 +15,6 @@ Initial release of `jobs-cli`: a single-binary, agent-friendly CLI for discoveri
 - ATS resolution for Greenhouse, Lever, Ashby, Workday, SmartRecruiters, iCIMS, and external application pages, with a redirect policy for shortened job links
 - Greenhouse native apply: `apply inspect`, `apply prepare` with an artifact manifest, and `apply submit` with remote validation
 - LinkedIn Voyager client with Easy Apply gating
-- Read adapters for Lever, Ashby, Workday, SmartRecruiters, and iCIMS
 
 ### Auth and sessions
 

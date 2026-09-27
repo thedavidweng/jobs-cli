@@ -53,11 +53,3 @@ type Plan struct {
 	PlannedMutations []Mutation `json:"planned_mutations"`
 	Notes            []string   `json:"notes,omitempty"`
 }
-
-func NewPlan(command string, mutations ...Mutation) Plan {
-	return Plan{
-		Command:          command,
-		DryRun:           true,
-		PlannedMutations: mutations,
-	}
-}

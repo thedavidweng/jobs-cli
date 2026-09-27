@@ -25,27 +25,6 @@ func New() *Importer {
 	return &Importer{}
 }
 
-func DetectBrowsers(ctx context.Context) []string {
-	found := make(map[string]bool)
-	for store, err := range kooky.TraverseCookieStores(ctx) {
-		if err != nil || store == nil {
-			continue
-		}
-		browser := canonicalBrowser(store.Browser())
-		if browser != "" {
-			found[browser] = true
-		}
-		_ = store.Close()
-	}
-	detected := make([]string, 0, len(found))
-	for _, browser := range browserOrder {
-		if found[browser] {
-			detected = append(detected, browser)
-		}
-	}
-	return detected
-}
-
 func UnsupportedBrowser(browser string) bool {
 	return browser != "" && canonicalBrowser(browser) == ""
 }

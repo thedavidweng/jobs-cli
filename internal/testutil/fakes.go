@@ -17,10 +17,6 @@ type FakeSource struct {
 	Details    []domain.DetailRequest
 }
 
-func (f *FakeSource) Name() domain.Source {
-	return f.SourceName
-}
-
 func (f *FakeSource) Search(_ context.Context, req *domain.SearchRequest) (*domain.SearchPartition, error) {
 	f.Requests = append(f.Requests, *req)
 	if f.SearchErr != nil {
@@ -85,10 +81,6 @@ type FakeProvider struct {
 	InspectCalls int
 	SubmitCalls  int
 	LastRequest  domain.SubmitRequest
-}
-
-func (f *FakeProvider) Name() domain.ApplicationProvider {
-	return f.ProviderName
 }
 
 func (f *FakeProvider) Capabilities() domain.Capabilities {

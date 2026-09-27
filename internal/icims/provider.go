@@ -15,7 +15,6 @@ import (
 type Provider struct{ Client *http.Client }
 
 func NewProvider(client *http.Client) domain.ApplyProvider { return &Provider{Client: client} }
-func (p *Provider) Name() domain.ApplicationProvider       { return domain.ProviderICIMS }
 func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{Inspect: true, BrowserRequired: true}
 }

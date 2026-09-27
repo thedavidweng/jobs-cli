@@ -57,7 +57,7 @@ Core functionality will include:
 - ATS/application-provider resolution;
 - Greenhouse structured application inspection and native submission;
 - LinkedIn Easy Apply form inspection; native submission only after live authenticated verification;
-- read-only structured support for Lever, Ashby, Workday, and SmartRecruiters;
+- browser-required application targets for Lever, Ashby, Workday, and SmartRecruiters;
 - explicit browser-required results for providers whose public candidate submission cannot be completed natively;
 - stable JSON envelopes and exit codes for Agent use;
 - human-readable output by default;
@@ -133,25 +133,19 @@ Core functionality will include:
 
 33. As a user, I want LinkedIn Easy Apply submission to remain disabled until the current Voyager implementation has been successfully exercised with a real authenticated test session, so that source-level evidence is not mistaken for end-to-end verification.
 
-34. As a user, I want Lever jobs to be searchable and inspectable through their public structured API, so that browser scraping is unnecessary for discovery.
+35. As a user, I want Lever application targets to report browser-required status and a usable URL, so that I can complete its browser-only application flow without CAPTCHA bypass.
 
-35. As a user, I want Lever application targets to report browser-required status when hCaptcha prevents public native submission, so that the CLI does not pretend to support an unreliable bypass.
-
-36. As a user, I want Ashby jobs and structured compensation to be available through its public job-board API, so that rich salary data is retained.
-
-37. As a user, I want public Ashby candidate submissions to return browser-required status, so that the CLI does not misuse employer-only credentials.
-
-38. As a user, I want Workday job discovery and details to use CXS JSON endpoints where available, so that the read path avoids browser automation.
+37. As a user, I want Ashby application targets to report browser-required status and a usable URL, so that I can complete its browser-only application flow.
 
 39. As a user, I want Workday application targets to report browser-required status, so that candidate-account creation, email verification, session state, and multi-step wizard handling stay outside this CLI.
 
-40. As a user, I want SmartRecruiters public listings and details to be available through the same normalized interface, so that they can participate in cross-source job discovery.
+40. As a user, I want SmartRecruiters application targets to report browser-required status and a usable URL, so that I can complete its browser-only application flow.
 
 41. As a user, I want iCIMS jobs to be identified even when only public HTML/Schema.org data is available, so that the application URL is still useful.
 
 42. As a user, I want iCIMS native submission to be explicitly unsupported rather than implemented as fragile browser scraping.
 
-43. As an Agent, I want pagination metadata to be represented consistently even when providers use different pagination models, so that I can iterate without provider-specific logic.
+43. As an Agent, I want pagination metadata to be represented consistently for supported discovery sources, so that I can continue a query using its native cursor or offset.
 
 44. As an Agent, I want rate-limit failures to be explicitly retryable and expose `retry_after_ms` when available, so that I can back off correctly.
 
@@ -318,7 +312,7 @@ Application metadata must include enough information to expose capabilities such
 - native submit supported;
 - browser required.
 
-**v1 discovery Sources** for `search` are Indeed and LinkedIn only. Greenhouse, Lever, Ashby, Workday, and SmartRecruiters are Application Providers (and read adapters) in v1—not first-class `search --source` values. Keep a Source extension point for later board search without exposing it in the v1 command surface.
+**v1 discovery Sources** for `search` are Indeed and LinkedIn only. Greenhouse, Lever, Ashby, Workday, and SmartRecruiters are Application Providers, not `search --source` values. The CLI resolves their application URLs and reports capabilities; it does not expose their job-board read APIs. Keep a Source extension point for later board search without exposing it in the v1 command surface.
 
 ### 7. Multi-source search behavior
 
@@ -339,10 +333,6 @@ Providers retain their native pagination internally:
 - Indeed: cursor.
 - LinkedIn Voyager: offset/count.
 - LinkedIn Guest: start offset.
-- Lever: limit/skip.
-- Workday: limit/offset.
-- SmartRecruiters: offset/limit.
-- Greenhouse/Ashby board APIs may return the full board.
 
 The public JSON envelope normalizes pagination metadata without pretending every provider supports an identical primitive.
 
@@ -544,41 +534,23 @@ The CLI must not infer subjective answers.
 
 ### 18. Lever
 
-Use the public Postings API for structured read support.
-
-Native public candidate submission is not implemented because the public application flow is hCaptcha-protected and programmatic submission requires non-public/employer authentication.
-
-Resolved Lever applications must therefore expose a usable application URL and `browser_required`.
+Resolved Lever applications expose a usable application URL and `browser_required`.
 
 Do not attempt CAPTCHA bypass.
 
 ### 19. Ashby
 
-Use the public job-board API for job discovery/details.
-
-Request compensation data where supported.
-
-Candidate-side public native submission is not implemented because programmatic application submission requires employer credentials while the public candidate flow is handled by the web application.
-
-Expose `browser_required` for public application.
+Resolved Ashby applications expose a usable application URL and `browser_required`.
 
 ### 20. Workday
 
-Use Workday CXS JSON endpoints for search and job-detail reads where the target tenant exposes them.
-
-Do not implement public native candidate submission in the initial version.
-
 Candidate account creation, verification, authentication, session state, and multi-step application wizard remain browser responsibilities.
 
-Expose `browser_required`.
+Resolved Workday applications expose a usable application URL and `browser_required`.
 
 ### 21. SmartRecruiters
 
-Use the public company postings API for job discovery and details.
-
-Initial scope is read support and resolution.
-
-Do not invent candidate submission support unless it is separately verified.
+Resolved SmartRecruiters applications expose a usable application URL and `browser_required`.
 
 ### 22. iCIMS
 
@@ -877,10 +849,7 @@ At minimum, useful smoke tests include:
 
 - Indeed search;
 - LinkedIn Guest search;
-- Greenhouse job retrieval;
-- Lever posting retrieval;
-- Ashby board retrieval;
-- SmartRecruiters posting retrieval.
+- Greenhouse job retrieval.
 
 Authenticated LinkedIn live tests require an explicitly configured test session.
 
@@ -1135,89 +1104,6 @@ Greenhouse is the required first end-to-end path for:
 
 discovery → resolution → application inspection → preparation → dry-run → confirm → submit.
 
-#### Lever — VERIFIED WORKING FOR READ
-
-Public base:
-
-`https://api.lever.co`
-
-Postings:
-
-`GET /v0/postings/{company}`
-
-Single posting:
-
-`GET /v0/postings/{company}/{posting_id}`
-
-Supports structured discovery and details.
-
-Public candidate submission is not part of this implementation because the web candidate flow uses hCaptcha and programmatic submission requires privileged API credentials.
-
-Result:
-
-- read support;
-- application URL;
-- `browser_required`.
-
-#### Ashby — VERIFIED WORKING FOR READ
-
-Public endpoint pattern:
-
-`GET https://api.ashbyhq.com/posting-api/job-board/{organization}?includeCompensation=true`
-
-Useful structured data includes:
-
-- jobs;
-- compensation tiers;
-- minimum/maximum values;
-- currency;
-- interval;
-- equity indicators.
-
-Public read was live-verified.
-
-Programmatic application submission uses an employer-side authenticated API; this must not be repurposed for public candidate automation.
-
-Result:
-
-- read support;
-- rich compensation normalization;
-- application URL;
-- `browser_required`.
-
-#### Workday — VERIFIED SOURCE IMPLEMENTATION FOR READ
-
-Typical search pattern:
-
-`POST https://{tenant}.{sub}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs`
-
-Typical detail pattern:
-
-`GET https://{tenant}.{sub}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job/{job_id}`
-
-Search commonly uses:
-
-- `appliedFacets`
-- `limit`
-- `offset`
-- `searchText`
-
-CXS is the preferred read surface.
-
-Candidate application requires stateful account/login/verification/multi-step web flows and is not a native CLI submit target in this spec.
-
-#### SmartRecruiters — VERIFIED WORKING FOR READ
-
-Public patterns:
-
-`GET https://api.smartrecruiters.com/v1/companies/{company}/postings`
-
-`GET https://api.smartrecruiters.com/v1/companies/{company}/postings/{posting_id}`
-
-Read behavior was live-verified in September 2026.
-
-Initial implementation is discovery/detail/resolution only.
-
 #### iCIMS
 
 Public partner API access is gated.
@@ -1258,8 +1144,8 @@ High-value existing work:
    - not a primary source for the new implementation.
 
 5. Existing ATS-board projects discovered during research
-   - useful as parsing/provider-identification references;
-   - public API documentation and the project's verified research remain the authority for the implemented surface.
+   - useful as provider-identification references;
+   - public API documentation and the project's verified research remain the authority for resolver behavior.
 
 ### Existing research artifacts
 
@@ -1276,8 +1162,9 @@ The implementation was preceded by research covering:
 - working Indeed proof of concept.
 
 The private research artifacts are not tracked in this public repository.
-Public evidence is preserved in the adapters, fixtures, transport-pinned tests,
-ADR documents, and upstream provenance references.
+Evidence for the supported discovery and application surfaces is preserved in
+their adapters, fixtures, transport-pinned tests, ADR documents, and upstream
+provenance references. ATS board read APIs are not exposed by the CLI.
 
 If implementation encounters a contradiction between a live endpoint and the September 2026 research, document the new evidence and update the research rather than silently changing assumptions.
 
@@ -1313,9 +1200,8 @@ Recommended execution order:
    Indeed discovery → Greenhouse resolution → application inspection → preparation → dry-run → confirmed submission using non-production test infrastructure/stubs for automated tests.
 8. Add authenticated LinkedIn Voyager session handling (`auth linkedin login`) and live search/details verification behind `--authenticated`.
 9. Verify and enable LinkedIn Easy Apply submit after live verification.
-10. Add structured read adapters for Lever, Ashby, Workday, and SmartRecruiters.
-11. Add iCIMS/generic external resolution behavior.
-12. Finish installation, release, docs, and Homebrew integration (`jobs-cli`).
+10. Add iCIMS/generic external resolution behavior.
+11. Finish installation, release, docs, and Homebrew integration (`jobs-cli`).
 
 ### Definition of success
 

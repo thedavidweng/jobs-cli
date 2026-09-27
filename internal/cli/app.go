@@ -89,10 +89,6 @@ func Execute() {
 	os.Exit(New(&Options{}).Run(os.Args[1:]))
 }
 
-func (a *App) Root() *cobra.Command {
-	return a.root
-}
-
 func (a *App) Run(args []string) int {
 	a.root.SetArgs(args)
 	if target, _, err := a.root.Find(args); err == nil && target != nil {
@@ -147,18 +143,14 @@ func (a *App) config() *config.Config {
 
 func (a *App) registry() *registry.Registry {
 	if a.reg == nil {
-		a.reg = a.registryFactory()(a.config(), a.httpClient())
+		cfg, client := a.config(), a.httpClient()
+		if a.opts.RegistryFactory != nil {
+			a.reg = a.opts.RegistryFactory(cfg, client)
+		} else {
+			a.reg = registry.New(client, cfg)
+		}
 	}
 	return a.reg
-}
-
-func (a *App) registryFactory() func(*config.Config, *http.Client) *registry.Registry {
-	if a.opts.RegistryFactory != nil {
-		return a.opts.RegistryFactory
-	}
-	return func(cfg *config.Config, client *http.Client) *registry.Registry {
-		return registry.New(registry.Options{Client: client, Config: cfg})
-	}
 }
 
 func (a *App) httpClient() *http.Client {

@@ -21,10 +21,6 @@ func (s Source) Valid() bool {
 	}
 }
 
-func V1Sources() []Source {
-	return []Source{SourceIndeed, SourceLinkedIn}
-}
-
 func FormatJobID(source Source, sourceJobID string) string {
 	return string(source) + ":" + sourceJobID
 }

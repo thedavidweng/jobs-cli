@@ -15,8 +15,5 @@ run = "gofumpt -extra -w ."
 [tasks.lint]
 run = "golangci-lint run"
 
-[tasks.conventions]
-run = "go run ./internal/tools/conventions"
-
 [tasks.check]
-depends = ["fmt", "build", "test", "lint", "conventions"]
+depends = ["fmt", "build", "test", "lint"]

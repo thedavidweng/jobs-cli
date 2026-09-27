@@ -22,11 +22,6 @@ import (
 	"github.com/thedavidweng/jobs-cli/internal/workday"
 )
 
-type Options struct {
-	Client *http.Client
-	Config *config.Config
-}
-
 type Registry struct {
 	GuestSources map[domain.Source]domain.SourceAdapter
 	AuthSources  map[domain.Source]domain.SourceAdapter
@@ -35,30 +30,27 @@ type Registry struct {
 	LinkedInAuth *session.Service
 }
 
-func New(opts Options) *Registry {
+func New(client *http.Client, cfg *config.Config) *Registry {
 	sessions := (*config.SessionStore)(nil)
-	if opts.Config != nil {
-		sessions = opts.Config.SessionStore().WithProfile(opts.Config.ProfileName)
+	if cfg != nil {
+		sessions = cfg.SessionStore().WithProfile(cfg.ProfileName)
 	}
 	r := &Registry{
 		GuestSources: map[domain.Source]domain.SourceAdapter{},
 		AuthSources:  map[domain.Source]domain.SourceAdapter{},
 		Providers:    map[domain.ApplicationProvider]domain.ApplyProvider{},
 	}
-	r.GuestSources[domain.SourceIndeed] = indeed.NewSource(opts.Client)
-	r.GuestSources[domain.SourceLinkedIn] = linkedinguest.NewSource(opts.Client)
-	r.GuestSources[domain.Source("lever")] = lever.NewSource(opts.Client)
-	r.GuestSources[domain.Source("ashby")] = ashby.NewSource(opts.Client)
-	r.GuestSources[domain.Source("smartrecruiters")] = smartrecruiters.NewSource(opts.Client)
-	r.AuthSources[domain.SourceLinkedIn] = voyager.NewSource(opts.Client, sessions)
-	r.Resolver = resolver.New(opts.Client)
-	r.Providers[domain.ProviderGreenhouse] = greenhouse.NewProvider(opts.Client)
-	r.Providers[domain.ProviderLinkedIn] = linkedin.NewProvider(opts.Client, sessions)
-	r.Providers[domain.ProviderLever] = lever.NewProvider(opts.Client)
-	r.Providers[domain.ProviderAshby] = ashby.NewProvider(opts.Client)
-	r.Providers[domain.ProviderWorkday] = workday.NewProvider(opts.Client)
-	r.Providers[domain.ProviderSmartRecruiters] = smartrecruiters.NewProvider(opts.Client)
-	r.Providers[domain.ProviderICIMS] = icims.NewProvider(opts.Client)
+	r.GuestSources[domain.SourceIndeed] = indeed.NewSource(client)
+	r.GuestSources[domain.SourceLinkedIn] = linkedinguest.NewSource(client)
+	r.AuthSources[domain.SourceLinkedIn] = voyager.NewSource(client, sessions)
+	r.Resolver = resolver.New(client)
+	r.Providers[domain.ProviderGreenhouse] = greenhouse.NewProvider(client)
+	r.Providers[domain.ProviderLinkedIn] = linkedin.NewProvider(client, sessions)
+	r.Providers[domain.ProviderLever] = lever.NewProvider()
+	r.Providers[domain.ProviderAshby] = ashby.NewProvider()
+	r.Providers[domain.ProviderWorkday] = workday.NewProvider()
+	r.Providers[domain.ProviderSmartRecruiters] = smartrecruiters.NewProvider()
+	r.Providers[domain.ProviderICIMS] = icims.NewProvider(client)
 	r.LinkedInAuth = session.New(sessions, cookieimport.New())
 	return r
 }
