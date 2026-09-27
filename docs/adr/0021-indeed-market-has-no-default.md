@@ -1,0 +1,7 @@
+# Indeed search has no default market
+
+Indeed serves each country from its own index, and a search sent to the wrong market returns plausible jobs from the wrong place instead of failing: under the US market, `Vancouver` returns jobs around Portland, OR, and `London` returns jobs in Ohio. A default country makes every search outside that country silently wrong, so there is none. The indeed partition takes its country from `--country`, then the end of `--location`, then `JOBS_COUNTRY`, then the profile `country`. With none, that partition alone fails with `MARKET_REQUIRED` and the other Sources still run (ADR-0005). The partition echoes the market it searched and which input chose it.
+
+`--location` inference reads its last comma-separated part against a small closed table of US states, Canadian provinces, and Indeed country names, not a city gazetteer. A bare city infers nothing, and two-letter parts other than `US` and `UK` are read as states or provinces, so `San Francisco, CA` is California and `Berlin, DE` is Delaware. The location outranks `JOBS_COUNTRY` and the profile because it describes this search, while they describe the caller's usual market. The locale never chooses the country.
+
+Detail retrieval stays market-independent: `jobData` returns the same job under any market, so `show`, `resolve`, and `apply` need no market, and a job's `source_url` follows its own country. This supersedes the rule that market parameters come from the profile and are never guessed from `--location`.

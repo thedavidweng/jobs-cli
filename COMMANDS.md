@@ -24,7 +24,8 @@ Available on every command:
 
 - `search`: search across discovery sources.
   - `--query/-q <text>`: keywords (required unless `--location` is given).
-  - `--location <text>`: location filter. Indeed takes free text. Authenticated
+  - `--location <text>`: location filter. Indeed takes free text, and its ending
+    can also choose the Indeed market (see `--country`). Authenticated
     LinkedIn (Voyager) requires a geo URN (`urn:li:fsd_geo:<id>`, the `geoId`
     from a LinkedIn jobs search URL) or a built-in known location (for example
     `Vancouver, BC` or `remote`); anything else fails the linkedin partition
@@ -41,11 +42,29 @@ Available on every command:
     the linkedin partition. Only LinkedIn has an authenticated variant, so
     Indeed (and any other source) keeps running its own implementation; the
     flag never turns a source off.
-  - `--country <code>`, `--locale <tag>`: Indeed market override (for example
-    `CA` / `en-CA`). Indeed sends these as `indeed-co` / `indeed-locale` and
-    builds market source URLs (`ca.indeed.com`). Precedence: flag over
-    environment (`JOBS_COUNTRY` / `JOBS_LOCALE`) over profile. Defaults are
-    `US` / `en-<country>`.
+  - `--country <code>`: the Indeed market as an ISO country code (for example
+    `US`, `CA`, `GB`; `UK` is accepted for `GB`). Indeed searches one country
+    per request and there is no default market. The indeed partition takes its
+    market from the first of these that names one:
+    1. `--country`;
+    2. the last comma-separated part of `--location`, when it is a US state,
+       Canadian province, or country (code or name: `Austin, TX`,
+       `Toronto, ON`, `London, United Kingdom`). Two-letter parts other than
+       `US` and `UK` are read as states or provinces, so `San Francisco, CA` is
+       California and `Berlin, DE` is Delaware (write `Berlin, Germany` or
+       pass `--country DE`). A bare city names no market;
+    3. `JOBS_COUNTRY`;
+    4. the profile `country`.
+
+    With none of these, the indeed partition fails with `MARKET_REQUIRED` and
+    other sources still run. A country that is not an Indeed market fails the
+    indeed partition with `INVALID_ARGUMENTS` listing the markets. The indeed
+    partition reports the market it searched as `market` (`country`, `locale`,
+    and `origin`: `flag`, `location`, `env`, or `profile`).
+  - `--locale <tag>`: the Indeed locale as language-REGION (for example
+    `fr-CA`). Without it, `JOBS_LOCALE` or the profile `locale` applies when
+    its region is the market country; otherwise the locale is `en-<country>`.
+    The locale never chooses the market.
   - Results are **Search Partitions**: one per source, each with its own jobs,
     pagination, or structured error. Partial success (>= 1 source ok) exits 0
     with `meta.warnings`; exit non-zero only when every requested source fails.
@@ -146,8 +165,8 @@ profiles:
     sources:
       - indeed
       - linkedin
-    country: CA      # Indeed market; default US
-    locale: en-CA    # Indeed locale; defaults to en-<country>
+    country: CA      # Indeed market fallback (see search --country)
+    locale: en-CA    # used when its region is the market
     timeout: 30s
     read_only: false
     linkedin:
@@ -155,9 +174,13 @@ profiles:
 ```
 
 Environment overrides: `JOBS_PROFILE`, `JOBS_CONFIG`, `JOBS_TIMEOUT`,
-`JOBS_READ_ONLY`, `JOBS_SOURCES`, `JOBS_COUNTRY`, `JOBS_LOCALE`. The search
-`--country` / `--locale` flags override both. The market drives Indeed's
-`indeed-co` / `indeed-locale` headers and the canonical source URL host
+`JOBS_READ_ONLY`, `JOBS_SOURCES`, `JOBS_COUNTRY`, `JOBS_LOCALE`.
+`JOBS_COUNTRY` ranks below `search --country` and a market named by
+`--location`, and above the profile `country`. `JOBS_LOCALE` and the profile
+`locale` apply only when their region is the market country, and
+`search --locale` overrides both. The market drives Indeed's `indeed-co` /
+`indeed-locale` headers for search. `show`, `resolve`, and `apply` need no
+market. An Indeed Job's `source_url` points at the job's own country site
 (`www.indeed.com` for US, `ca.indeed.com` for CA, `uk.indeed.com` for GB).
 
 ## Utilities
@@ -183,7 +206,7 @@ Remote application submission is a mutation:
 | Code | Category |
 |------|----------|
 | 1 | internal error / not implemented |
-| 2 | invalid arguments / validation |
+| 2 | invalid arguments / validation (e.g. `MARKET_REQUIRED`) |
 | 3 | authentication (e.g. `LINKEDIN_SESSION_REQUIRED`) |
 | 4 | safety / read-only violation |
 | 5 | network / rate limit / source unavailable |

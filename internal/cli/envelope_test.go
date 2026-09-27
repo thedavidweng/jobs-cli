@@ -178,7 +178,7 @@ func TestJSONModeStdoutIsOnlyTheDocument(t *testing.T) {
 		map[domain.ApplicationProvider]domain.ApplyProvider{},
 	)
 	h := newHarness(t).useRegistry(reg)
-	out, errOut, code := h.run("--json", "search", "-q", "go")
+	out, errOut, code := h.run("--json", "search", "-q", "go", "--country", "US")
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0 (stderr: %s)", code, errOut)
 	}

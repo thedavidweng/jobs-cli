@@ -27,6 +27,23 @@ type Pagination struct {
 	Native     *NativePagination `json:"native,omitempty"`
 }
 
+// MarketOrigin records which input chose a Market's country.
+type MarketOrigin string
+
+const (
+	MarketFromFlag     MarketOrigin = "flag"
+	MarketFromLocation MarketOrigin = "location"
+	MarketFromEnv      MarketOrigin = "env"
+	MarketFromProfile  MarketOrigin = "profile"
+)
+
+// Market is the country and locale a market-scoped Source searches in.
+type Market struct {
+	Country string       `json:"country"`
+	Locale  string       `json:"locale"`
+	Origin  MarketOrigin `json:"origin"`
+}
+
 type SearchRequest struct {
 	Keywords      string
 	Location      string
@@ -37,12 +54,13 @@ type SearchRequest struct {
 	Offset        int
 	Cursor        string
 	Authenticated bool
-	Country       string
-	Locale        string
+	// Market is set only for market-scoped Sources.
+	Market *Market
 }
 
 type SearchPartition struct {
 	Source     Source        `json:"source"`
+	Market     *Market       `json:"market,omitempty"`
 	Jobs       []Job         `json:"jobs"`
 	Pagination *Pagination   `json:"pagination,omitempty"`
 	Error      *errors.Error `json:"error,omitempty"`
@@ -55,6 +73,4 @@ type SearchResult struct {
 type DetailRequest struct {
 	SourceJobID   string
 	Authenticated bool
-	Country       string
-	Locale        string
 }

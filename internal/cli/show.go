@@ -68,8 +68,7 @@ func (a *App) loadJob(ctx context.Context, jobID string, authenticated bool) (*d
 	if aerr != nil {
 		return nil, aerr
 	}
-	country, locale := a.config().Market()
-	job, derr := adapter.Detail(ctx, &domain.DetailRequest{SourceJobID: sourceJobID, Authenticated: authenticated, Country: country, Locale: locale})
+	job, derr := adapter.Detail(ctx, &domain.DetailRequest{SourceJobID: sourceJobID, Authenticated: authenticated})
 	if derr != nil {
 		return nil, joberrors.From(derr)
 	}

@@ -8,9 +8,10 @@ import (
 
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/internal/market"
 )
 
-func normalizeJob(node *jobNode, mkt market) (*domain.Job, *joberrors.Error) {
+func normalizeJob(node *jobNode, marketCountry string) (*domain.Job, *joberrors.Error) {
 	if node == nil {
 		return nil, schemaDrift("job node is missing")
 	}
@@ -27,7 +28,7 @@ func normalizeJob(node *jobNode, mkt market) (*domain.Job, *joberrors.Error) {
 	job.Workplace, job.Remote = workplace(node.Attributes)
 	job.PostedDate = postedDate(node.DatePublished)
 	job.Compensation = compensationFor(node.Compensation, node.Recruit)
-	job.SourceURL = mkt.viewJobURL(node.Key)
+	job.SourceURL = viewJobURL(node, marketCountry)
 	job.ApplicationURL = recruitViewURL(node.Recruit)
 	job.Description = descriptionText(node.Description)
 	raw, err := json.Marshal(node)
@@ -36,6 +37,20 @@ func normalizeJob(node *jobNode, mkt market) (*domain.Job, *joberrors.Error) {
 	}
 	job.Diagnostics = &domain.Diagnostics{SourcePayload: raw}
 	return &job, nil
+}
+
+// viewJobURL links a job on its own country's Indeed site, falling back to the
+// market that returned it when the job carries no Indeed market country.
+func viewJobURL(node *jobNode, marketCountry string) string {
+	country := ""
+	if node.Location != nil && node.Location.CountryCode != nil {
+		country = *node.Location.CountryCode
+	}
+	host, ok := market.Host(country)
+	if !ok {
+		host, _ = market.Host(marketCountry)
+	}
+	return "https://" + host + "/viewjob?jk=" + node.Key
 }
 
 func employerName(node *employerNode) string {

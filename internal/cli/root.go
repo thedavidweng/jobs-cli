@@ -20,7 +20,7 @@ Lever, Ashby, Workday, SmartRecruiters, iCIMS, or an external site).
 A Source is where a Job was discovered. An Application Provider is the system that
 accepts the application. They are never the same field.`,
 		Example: `  jobs-cli search --query "backend engineer" --location "Vancouver, BC"
-  jobs-cli --json search --query "golang" --source indeed
+  jobs-cli --json search --query "golang" --source indeed --country US
   jobs-cli show indeed:abc123 --resolve
   jobs-cli resolve indeed:abc123
   jobs-cli apply inspect indeed:abc123

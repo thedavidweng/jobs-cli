@@ -123,7 +123,7 @@ func TestBinaryJSONContractsAndExitCodes(t *testing.T) {
 
 	t.Run("search_all_sources_fail_offline", func(t *testing.T) {
 		offline := append(append([]string{}, env...), "HTTP_PROXY=http://127.0.0.1:1", "HTTPS_PROXY=http://127.0.0.1:1")
-		stdout, stderr, code := testutil.RunBinary(t, offline, "--json", "search", "-q", "go")
+		stdout, stderr, code := testutil.RunBinary(t, offline, "--json", "search", "-q", "go", "--country", "US")
 		if code != 5 {
 			t.Fatalf("exit = %d, want 5 (stderr: %s)", code, stderr)
 		}

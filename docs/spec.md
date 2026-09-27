@@ -364,7 +364,9 @@ Required functionality:
 
 The required mobile client identity/header bundle must be sourced from the pinned working JobSpy implementation referenced under Further Notes.
 
-Market parameters are profile-driven, not guessed from the `--location` string. `indeed-co`, `indeed-locale`, and `accept-language` derive from the profile market (`country` / `locale`, overridable via `JOBS_COUNTRY` / `JOBS_LOCALE` and `search --country` / `--locale`). The canonical source URL host follows the same market (`www.indeed.com` for US, `ca.indeed.com` for CA, `uk.indeed.com` for GB). Defaults are `US` / `en-US` — the live-verified values of the pinned bundle; the September 2026 Vancouver verification used `indeed-locale: en-CA` with `indeed-co: CA`. The locale defaults to `en-<country>` when only a country is set.
+Indeed search is market-scoped, and there is no default market (ADR-0021). Each request searches one country's index, and a request sent to the wrong market returns plausible jobs from the wrong place instead of failing: under the US market, `Vancouver` returns jobs around Portland, OR, and `London` returns jobs in Ohio. The indeed partition takes its country from the first of: `search --country`; the last comma-separated part of `--location` when it is a US state, Canadian province, or Indeed country, by code or name (two-letter parts other than `US` and `UK` are read as states or provinces, so `San Francisco, CA` is California); `JOBS_COUNTRY`; the profile `country`. With none, the indeed partition fails with `MARKET_REQUIRED` and the other partitions still run. The market list is the Country enum of the pinned JobSpy reference, and a country outside it fails with `INVALID_ARGUMENTS`. The locale is `--locale`, else `JOBS_LOCALE` or the profile `locale` when its region is the market, else `en-<country>`; the locale never chooses the country. `indeed-co`, `indeed-locale`, and `accept-language` carry the resolved market (the September 2026 Vancouver verification used `indeed-co: CA` with `indeed-locale: en-CA`), and the partition echoes it as `market` with the `origin` that chose it.
+
+Detail retrieval is market-independent: `jobData` returns the same job under any market (live-verified), so `show`, `resolve`, and `apply` send the pinned bundle's verified `US` / `en-US` values and need no market. The canonical source URL host follows each job's own `location.countryCode` (`www.indeed.com` for US, `ca.indeed.com` for CA, `uk.indeed.com` for GB), falling back to the search market.
 
 Do not invent a new Indeed query if the verified query is sufficient.
 
@@ -619,6 +621,7 @@ The established categories include:
 Jobs-specific machine error codes (ADR-0017) — v1 normative set:
 
 - `SOURCE_UNAVAILABLE`
+- `MARKET_REQUIRED` (added by ADR-0021)
 - `ATS_RESOLUTION_FAILED`
 - `NATIVE_APPLY_UNSUPPORTED`
 - `BROWSER_REQUIRED`
@@ -753,7 +756,8 @@ Cover:
 - `recruit.viewJobUrl`;
 - batch details;
 - schema drift;
-- market propagation (US and CA at minimum: `indeed-co`, `indeed-locale`, `accept-language`, market source URL host, from profile, environment, and flags);
+- market resolution: `--country` over `--location` inference over environment over profile, `MARKET_REQUIRED` without sending a request, and `INVALID_ARGUMENTS` for countries outside the market list;
+- market propagation (US and CA at minimum: `indeed-co`, `indeed-locale`, `accept-language`), the source URL host from each job's country, and market-independent detail;
 - anti-bot response detection as an API failure rather than HTML parsing success.
 
 Fixture shape should be derived from the verified `speedyapply/JobSpy` implementation and the September 2026 live investigation.
@@ -1244,3 +1248,4 @@ At no point should the Agent need to understand provider-specific HTML, GraphQL,
 | 0018 | No local candidate profile store in v1 |
 | 0019 | Go module path |
 | 0020 | Binary name `jobs-cli` |
+| 0021 | Indeed market has no default; `--country`, `--location`, env, or profile, else `MARKET_REQUIRED` |

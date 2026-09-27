@@ -1,6 +1,10 @@
 package indeed
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/thedavidweng/jobs-cli/internal/domain"
+)
 
 // Mobile client identity bundle, taken verbatim from the pinned upstream
 // reference:
@@ -16,52 +20,13 @@ const (
 	remoteFilterKey = "DSQF7"
 )
 
-// Market parameters are profile-driven (country/locale; default US/en-US, the
-// values live-verified for the pinned bundle above; the September 2026
-// Vancouver verification used indeed-locale: en-CA with indeed-co: CA).
-type market struct {
-	country string
-	locale  string
-}
+// detailMarket supplies the market headers for detail lookups. jobData is keyed
+// by job key and returns the same job under any market (live-verified), so
+// detail sends the pinned bundle's verified US/en-US values instead of asking
+// for a market.
+var detailMarket = domain.Market{Country: "US", Locale: "en-US"}
 
-func marketFor(country, locale string) market {
-	m := market{country: strings.ToUpper(strings.TrimSpace(country)), locale: strings.TrimSpace(locale)}
-	language, region, split := strings.Cut(m.locale, "-")
-	if split && m.country == "" && region != "" {
-		m.country = strings.ToUpper(region)
-	}
-	if !split {
-		m.locale = ""
-	}
-	if m.country == "" {
-		m.country = "US"
-	}
-	if m.locale == "" {
-		language = strings.ToLower(strings.TrimSpace(language))
-		if language == "" {
-			language = "en"
-		}
-		m.locale = language + "-" + m.country
-	}
-	return m
-}
-
-func (m market) acceptLanguage() string {
-	lang, _, _ := strings.Cut(m.locale, "-")
-	return m.locale + "," + lang + ";q=0.9"
-}
-
-func (m market) host() string {
-	switch m.country {
-	case "US":
-		return "www.indeed.com"
-	case "GB":
-		return "uk.indeed.com"
-	default:
-		return strings.ToLower(m.country) + ".indeed.com"
-	}
-}
-
-func (m market) viewJobURL(key string) string {
-	return "https://" + m.host() + "/viewjob?jk=" + key
+func acceptLanguage(locale string) string {
+	language, _, _ := strings.Cut(locale, "-")
+	return locale + "," + language + ";q=0.9"
 }

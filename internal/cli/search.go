@@ -10,6 +10,7 @@ import (
 
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/internal/market"
 	"github.com/thedavidweng/jobs-cli/internal/output"
 	"github.com/thedavidweng/jobs-cli/internal/registry"
 )
@@ -40,6 +41,14 @@ merges or deduplicates across sources. Default sources are indeed and linkedin (
 --authenticated switches the linkedin partition to authenticated Voyager; sources
 without an authenticated variant (indeed) keep their single implementation.
 
+Indeed searches one market (country) and has no default. The market comes from
+--country, else from the end of --location (a US state, Canadian province, or
+country name: "Austin, TX", "Toronto, ON", "London, United Kingdom"), else
+JOBS_COUNTRY, else the profile country. Two-letter endings other than US and UK
+are read as US states or Canadian provinces, so "San Francisco, CA" is
+California. Without a market the indeed partition fails with MARKET_REQUIRED
+and other sources still run.
+
 Continuation is per source: pass exactly one --source plus that source's native
 --cursor or --offset. There is no cross-source page token.`,
 		Args: cobra.NoArgs,
@@ -57,8 +66,8 @@ Continuation is per source: pass exactly one --source plus that source's native
 	cmd.Flags().StringVar(&f.cursor, "cursor", "", "native cursor for single-source continuation")
 	cmd.Flags().StringSliceVar(&f.sources, "source", nil, "discovery source (repeatable; v1: indeed, linkedin)")
 	cmd.Flags().BoolVar(&f.authenticated, "authenticated", false, "use authenticated LinkedIn (Voyager) instead of Guest (LinkedIn only)")
-	cmd.Flags().StringVar(&f.country, "country", "", "Indeed market country code (e.g. CA; default US; overrides profile and JOBS_COUNTRY)")
-	cmd.Flags().StringVar(&f.locale, "locale", "", "Indeed market locale (e.g. en-CA; defaults to en-<country>; overrides profile and JOBS_LOCALE)")
+	cmd.Flags().StringVar(&f.country, "country", "", "Indeed market as an ISO country code, e.g. US, CA, GB (overrides --location inference, JOBS_COUNTRY, and the profile)")
+	cmd.Flags().StringVar(&f.locale, "locale", "", "Indeed locale as language-REGION, e.g. fr-CA (default: JOBS_LOCALE or the profile locale when its region is the market, else en-<country>)")
 	return cmd
 }
 
@@ -74,7 +83,7 @@ func (a *App) runSearch(cmd *cobra.Command, f *searchFlags) error {
 		return err
 	}
 
-	country, locale := a.searchMarket(cmd, f)
+	mkt, marketErr := a.searchMarket(f)
 
 	reg := a.registry()
 	results := make([]partResult, len(sources))
@@ -83,7 +92,7 @@ func (a *App) runSearch(cmd *cobra.Command, f *searchFlags) error {
 		wg.Add(1)
 		go func(index int, source domain.Source) {
 			defer wg.Done()
-			results[index] = searchOne(ctx, reg, source, f, country, locale)
+			results[index] = searchOne(ctx, reg, source, f, mkt, marketErr)
 		}(i, name)
 	}
 	wg.Wait()
@@ -130,13 +139,13 @@ type partResult struct {
 	err       error
 }
 
-func searchOne(ctx context.Context, reg *registry.Registry, source domain.Source, f *searchFlags, country, locale string) partResult {
+// searchOne runs one Source. A market-scoped Source searches the resolved
+// market, or fails its own partition when none resolved; other Sources never
+// see a market.
+func searchOne(ctx context.Context, reg *registry.Registry, source domain.Source, f *searchFlags, mkt *domain.Market, marketErr *joberrors.Error) partResult {
 	adapter, aerr := reg.Source(source, f.authenticated)
 	if aerr != nil {
-		return partResult{
-			partition: domain.SearchPartition{Source: source, Jobs: []domain.Job{}, Error: aerr},
-			err:       aerr,
-		}
+		return failedPartition(source, nil, aerr)
 	}
 	req := &domain.SearchRequest{
 		Keywords:      f.query,
@@ -148,27 +157,36 @@ func searchOne(ctx context.Context, reg *registry.Registry, source domain.Source
 		Offset:        f.offset,
 		Cursor:        f.cursor,
 		Authenticated: f.authenticated,
-		Country:       country,
-		Locale:        locale,
+	}
+	if source.MarketScoped() {
+		if marketErr != nil {
+			return failedPartition(source, nil, marketErr)
+		}
+		req.Market = mkt
 	}
 	partition, err := adapter.Search(ctx, req)
 	if err != nil {
-		e := joberrors.From(err)
-		return partResult{
-			partition: domain.SearchPartition{Source: source, Jobs: []domain.Job{}, Error: e},
-			err:       e,
-		}
+		return failedPartition(source, req.Market, joberrors.From(err))
 	}
-	if partition == nil {
-		partition = &domain.SearchPartition{Source: source}
+	out := domain.SearchPartition{Source: source}
+	if partition != nil {
+		out = *partition
 	}
-	if partition.Source == "" {
-		partition.Source = source
+	if out.Source == "" {
+		out.Source = source
 	}
-	if partition.Jobs == nil {
-		partition.Jobs = []domain.Job{}
+	if out.Jobs == nil {
+		out.Jobs = []domain.Job{}
 	}
-	return partResult{partition: *partition}
+	out.Market = req.Market
+	return partResult{partition: out}
+}
+
+func failedPartition(source domain.Source, mkt *domain.Market, err *joberrors.Error) partResult {
+	return partResult{
+		partition: domain.SearchPartition{Source: source, Market: mkt, Jobs: []domain.Job{}, Error: err},
+		err:       err,
+	}
 }
 
 func remoteFilter(f *searchFlags) *bool {
@@ -179,15 +197,17 @@ func remoteFilter(f *searchFlags) *bool {
 	return &value
 }
 
-func (a *App) searchMarket(cmd *cobra.Command, f *searchFlags) (country, locale string) {
-	country, locale = a.config().Market()
-	if cmd.Flags().Changed("country") {
-		country = strings.TrimSpace(f.country)
-	}
-	if cmd.Flags().Changed("locale") {
-		locale = strings.TrimSpace(f.locale)
-	}
-	return country, locale
+func (a *App) searchMarket(f *searchFlags) (*domain.Market, *joberrors.Error) {
+	configured := a.config().Market()
+	return market.Resolve(&market.Inputs{
+		Country:        f.country,
+		Locale:         f.locale,
+		Location:       f.location,
+		EnvCountry:     configured.EnvCountry,
+		EnvLocale:      configured.EnvLocale,
+		ProfileCountry: configured.ProfileCountry,
+		ProfileLocale:  configured.ProfileLocale,
+	})
 }
 
 func (a *App) resolveSearchSources(cmd *cobra.Command, f *searchFlags) ([]domain.Source, error) {
@@ -235,7 +255,7 @@ func (a *App) printSearch(data domain.SearchResult) {
 			fmt.Fprintf(a.out, "== %s: failed (%s) ==\n", partition.Source, partition.Error.Code)
 			continue
 		}
-		fmt.Fprintf(a.out, "== %s (%d jobs) ==\n", partition.Source, len(partition.Jobs))
+		fmt.Fprintf(a.out, "== %s (%d jobs%s) ==\n", partition.Source, len(partition.Jobs), marketLabel(partition.Market))
 		for j := range partition.Jobs {
 			job := &partition.Jobs[j]
 			fmt.Fprintf(a.out, "  %-28s %s\n", job.ID, job.Title)
@@ -245,4 +265,18 @@ func (a *App) printSearch(data domain.SearchResult) {
 			fmt.Fprintf(a.out, "  more available (cursor: %s)\n", partition.Pagination.NextCursor)
 		}
 	}
+}
+
+var marketOrigins = map[domain.MarketOrigin]string{
+	domain.MarketFromFlag:     "--country",
+	domain.MarketFromLocation: "--location",
+	domain.MarketFromEnv:      "JOBS_COUNTRY",
+	domain.MarketFromProfile:  "profile",
+}
+
+func marketLabel(m *domain.Market) string {
+	if m == nil {
+		return ""
+	}
+	return fmt.Sprintf(", market %s from %s", m.Country, marketOrigins[m.Origin])
 }

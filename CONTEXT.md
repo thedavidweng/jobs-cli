@@ -41,6 +41,10 @@ _Avoid_: Unsupported (too vague—prefer explicit capability + error code), scra
 The per-Source slice of a multi-source `search` result, carrying that Source’s jobs, pagination, or structured error.
 _Avoid_: Page (reserve for pagination within a Source), batch, group
 
+**Market**:
+The country whose Indeed index a search runs in, plus the locale sent with it. Each search resolves it from `--country`, the end of `--location`, `JOBS_COUNTRY`, or the profile; there is no default, and detail retrieval needs none.
+_Avoid_: Region, geo (LinkedIn's location URN), site
+
 **Session**:
 The locally stored LinkedIn web authentication material used for Voyager, obtained via guided browser import—not an OAuth access token.
 _Avoid_: OAuth token, API key, password

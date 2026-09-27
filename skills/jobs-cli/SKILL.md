@@ -26,8 +26,11 @@ Do this once. Skip any step that is already done.
 Learn the commands from `jobs-cli --help` and `jobs-cli <command> --help`, and
 add `--json` for machine-readable output.
 
-Indeed search defaults to the US market. For jobs in other countries, pass
-`--country` (for example `--country CA`).
+Indeed searches one country at a time and has no default country. Pass
+`--country` (for example `--country CA`), or end `--location` with a US state,
+Canadian province, or country, as in `"Toronto, ON"` or
+`"London, United Kingdom"`. A bare city such as `"London"` names no country,
+so the Indeed results fail with `MARKET_REQUIRED`.
 
 Applications go `apply inspect`, then `apply prepare`, then
 `apply submit --confirm`. Submitting sends a real application, so run

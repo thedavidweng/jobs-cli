@@ -107,7 +107,7 @@ func TestSearchAuthenticatedWithoutSessionKeepsIndeedPartition(t *testing.T) {
 		t:       t,
 		respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
 	}
-	doc := runIndeedSearch(t, transport, "--json", "search", "-q", "swift", "--authenticated")
+	doc := runIndeedSearch(t, transport, "--json", "search", "-q", "swift", "--authenticated", "--country", "US")
 
 	if transport.calls != 1 {
 		t.Fatalf("indeed HTTP calls = %d, want the indeed partition to run without a session", transport.calls)
@@ -124,20 +124,5 @@ func TestSearchAuthenticatedWithoutSessionKeepsIndeedPartition(t *testing.T) {
 	}
 	if len(doc.Meta.Partitions) != 2 || !doc.Meta.Partitions[0].OK || doc.Meta.Partitions[1].OK {
 		t.Fatalf("meta partitions = %+v", doc.Meta.Partitions)
-	}
-}
-
-func TestSearchIndeedSourceURLComesFromDefaultUSMarket(t *testing.T) {
-	transport := &indeedTransport{
-		t:       t,
-		respond: func(int) *http.Response { return indeedFixture(t, "search.json") },
-	}
-	doc := runIndeedSearch(t, transport, "--json", "search", "-q", "software engineer", "--source", "indeed")
-	if transport.co != "US" || transport.locale != "en-US" {
-		t.Fatalf("default market headers = %q/%q, want US/en-US", transport.co, transport.locale)
-	}
-	job := doc.Data.Partitions[0].Jobs[0]
-	if job.SourceURL != "https://www.indeed.com/viewjob?jk="+job.SourceJobID {
-		t.Fatalf("source url = %q, want the default www.indeed.com market", job.SourceURL)
 	}
 }

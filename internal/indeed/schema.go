@@ -57,7 +57,8 @@ type descriptionNode struct {
 }
 
 type locationNode struct {
-	Formatted *formattedLocation `json:"formatted"`
+	CountryCode *string            `json:"countryCode"`
+	Formatted   *formattedLocation `json:"formatted"`
 }
 
 type formattedLocation struct {
