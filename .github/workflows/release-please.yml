@@ -46,9 +46,8 @@ jobs:
                 exit 0
                 ;;
             esac
-            gh release edit "$TAG" --notes "${existing_notes}
-
-${install_notes}"
+            combined_notes="$(printf '%s\n\n%s\n' "$existing_notes" "$install_notes")"
+            gh release edit "$TAG" --notes "$combined_notes"
           else
             gh release create "$TAG" --title "$TAG" --notes "$install_notes"
           fi
