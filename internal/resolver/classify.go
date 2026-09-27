@@ -192,26 +192,6 @@ func looksLikeApplicationURL(u *url.URL) bool {
 	return false
 }
 
-var providerCapabilities = map[domain.ApplicationProvider]domain.Capabilities{
-	domain.ProviderGreenhouse:      {Inspect: true, Prepare: true, NativeSubmit: true},
-	domain.ProviderLinkedIn:        {Inspect: true, Prepare: true, AuthRequired: true},
-	domain.ProviderIndeed:          {BrowserRequired: true},
-	domain.ProviderLever:           {BrowserRequired: true},
-	domain.ProviderAshby:           {BrowserRequired: true},
-	domain.ProviderWorkday:         {BrowserRequired: true},
-	domain.ProviderSmartRecruiters: {BrowserRequired: true},
-	domain.ProviderICIMS:           {BrowserRequired: true},
-	domain.ProviderExternal:        {BrowserRequired: true},
-	domain.ProviderUnknown:         {BrowserRequired: true},
-}
-
-func capabilitiesFor(provider domain.ApplicationProvider) domain.Capabilities {
-	if capabilities, ok := providerCapabilities[provider]; ok {
-		return capabilities
-	}
-	return domain.Capabilities{BrowserRequired: true}
-}
-
 func postureFor(provider domain.ApplicationProvider) domain.VerificationPosture {
 	switch provider {
 	case domain.ProviderGreenhouse:

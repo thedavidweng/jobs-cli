@@ -99,7 +99,11 @@ Available on every command:
 - `sources status`: discovery Sources and Application Providers with their
   capabilities (auth required, browser required, native submit) and
   verification posture (`VERIFIED WORKING`, `VERIFIED SOURCE IMPLEMENTATION`,
-  `PARTIALLY VERIFIED`, `BROWSER REQUIRED`).
+  `PARTIALLY VERIFIED`, `BROWSER REQUIRED`). Provider capability flags are
+  derived from the same canonical table `resolve` and `apply inspect` use.
+  `auth_required` means the CLI-native operation needs CLI-managed
+  authentication (a CLI session such as the LinkedIn Session); a browser flow
+  that uses a login jobs-cli does not manage reports `auth_required: false`.
 - `doctor [--connect]`: local installation, config, and session checks;
   `--connect` adds optional connectivity checks for Indeed, LinkedIn, and
   Greenhouse.

@@ -102,6 +102,23 @@ ranking:
 so each source continues with its own primitive; continuation always names a
 single source.
 
+### Capability Flags
+
+Every Application Target carries a `capabilities` object; `sources status`
+reports the same flags per Application Provider. Both derive from one canonical
+table, so `sources status --json` and `resolve`/`apply inspect` never disagree.
+
+- `inspect`: the CLI can fetch application requirements natively.
+- `prepare`: the CLI can build a validated Application Artifact natively.
+- `native_submit`: the CLI can submit through a supported native interface.
+- `browser_required`: native submission is not available; hand the returned
+  application URL to a browser-capable Agent.
+- `auth_required`: the **CLI-native operation requires CLI-managed
+  authentication** (a CLI session or login, for example the LinkedIn Session).
+  It does **not** mean that a login may exist somewhere in the flow's UI. A
+  provider whose browser flow happens to use a candidate account that jobs-cli
+  does not manage — Indeed Apply, for example — reports `auth_required: false`.
+
 ### Application Target
 
 Returned by `resolve` (and attached to Jobs with `show --resolve`):
@@ -126,7 +143,7 @@ Returned by `resolve` (and attached to Jobs with `show --resolve`):
 }
 ```
 
-Providers with no native public submission (Lever, Ashby, Workday,
+Providers with no native public submission (Indeed, Lever, Ashby, Workday,
 SmartRecruiters, iCIMS, external) report `browser_required: true` plus a usable
 application URL. A LinkedIn job URL resolves to the `linkedin` provider (Easy
 Apply may be available); `apply inspect`/`prepare` return `BROWSER_REQUIRED`

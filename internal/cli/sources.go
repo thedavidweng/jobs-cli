@@ -78,66 +78,44 @@ func discoverySources() []entryStatus {
 
 func applicationProviders() []entryStatus {
 	return []entryStatus{
-		{
-			Name: "greenhouse", Kind: "application_provider", Role: "native",
-			Inspect: true, Prepare: true, NativeSubmit: true,
-			Verification: string(domain.VerifiedWorking),
-			Notes:        "public Board API; first native end-to-end application path",
-		},
-		{
-			Name: "linkedin", Kind: "application_provider", Role: "native",
-			AuthRequired: true, Inspect: true, Prepare: true, NativeSubmit: false,
-			Verification: string(domain.VerifiedSourceImpl),
-			Notes:        "Easy Apply inspect is available when LinkedIn-native apply is offered; non-Easy-Apply jobs are BROWSER_REQUIRED; submit stays disabled until live verification (LINKEDIN_EASY_APPLY_UNVERIFIED)",
-		},
-		{
-			Name: "indeed", Kind: "application_provider", Role: "browser",
-			AuthRequired: true, BrowserRequired: true,
-			Verification: string(domain.BrowserRequiredPosture),
-			Notes:        "direct Indeed Apply requires an authenticated candidate session and resume flow",
-		},
-		{
-			Name: "lever", Kind: "application_provider", Role: "browser",
-			BrowserRequired: true,
-			Verification:    string(domain.VerifiedWorking),
-			Notes:           "public Postings API for read; hCaptcha blocks native candidate submission",
-		},
-		{
-			Name: "ashby", Kind: "application_provider", Role: "browser",
-			BrowserRequired: true,
-			Verification:    string(domain.VerifiedWorking),
-			Notes:           "public job-board API read with compensation; submission requires employer credentials",
-		},
-		{
-			Name: "workday", Kind: "application_provider", Role: "browser",
-			BrowserRequired: true,
-			Verification:    string(domain.VerifiedSourceImpl),
-			Notes:           "CXS JSON read; candidate account, verification, and wizard stay in the browser",
-		},
-		{
-			Name: "smartrecruiters", Kind: "application_provider", Role: "browser",
-			BrowserRequired: true,
-			Verification:    string(domain.VerifiedWorking),
-			Notes:           "public company postings read; candidate submission stays in the browser",
-		},
-		{
-			Name: "icims", Kind: "application_provider", Role: "browser",
-			BrowserRequired: true,
-			Verification:    string(domain.PartiallyVerified),
-			Notes:           "public Schema.org/JSON-LD detail where available; native submission is not claimed",
-		},
-		{
-			Name: "external", Kind: "application_provider", Role: "browser",
-			BrowserRequired: true,
-			Verification:    string(domain.BrowserRequiredPosture),
-			Notes:           "unrecognized employer site; return the URL for an external browser-capable Agent",
-		},
-		{
-			Name: "unknown", Kind: "application_provider", Role: "browser",
-			BrowserRequired: true,
-			Verification:    string(domain.BrowserRequiredPosture),
-			Notes:           "provider could not be determined",
-		},
+		providerEntry(domain.ProviderGreenhouse, "native", string(domain.VerifiedWorking),
+			"public Board API; first native end-to-end application path"),
+		providerEntry(domain.ProviderLinkedIn, "native", string(domain.VerifiedSourceImpl),
+			"Easy Apply inspect is available when LinkedIn-native apply is offered; non-Easy-Apply jobs are BROWSER_REQUIRED; submit stays disabled until live verification (LINKEDIN_EASY_APPLY_UNVERIFIED)"),
+		providerEntry(domain.ProviderIndeed, "browser", string(domain.BrowserRequiredPosture),
+			"the browser flow may require an authenticated Indeed session; jobs-cli does not manage it"),
+		providerEntry(domain.ProviderLever, "browser", string(domain.VerifiedWorking),
+			"public Postings API for read; hCaptcha blocks native candidate submission"),
+		providerEntry(domain.ProviderAshby, "browser", string(domain.VerifiedWorking),
+			"public job-board API read with compensation; submission requires employer credentials"),
+		providerEntry(domain.ProviderWorkday, "browser", string(domain.VerifiedSourceImpl),
+			"CXS JSON read; candidate account, verification, and wizard stay in the browser"),
+		providerEntry(domain.ProviderSmartRecruiters, "browser", string(domain.VerifiedWorking),
+			"public company postings read; candidate submission stays in the browser"),
+		providerEntry(domain.ProviderICIMS, "browser", string(domain.PartiallyVerified),
+			"public Schema.org/JSON-LD detail where available; native submission is not claimed"),
+		providerEntry(domain.ProviderExternal, "browser", string(domain.BrowserRequiredPosture),
+			"unrecognized employer site; return the URL for an external browser-capable Agent"),
+		providerEntry(domain.ProviderUnknown, "browser", string(domain.BrowserRequiredPosture),
+			"provider could not be determined"),
+	}
+}
+
+// providerEntry builds an Application Provider row whose Capability flags come
+// from the canonical domain table, so sources status cannot drift from resolve.
+func providerEntry(provider domain.ApplicationProvider, role, verification, notes string) entryStatus {
+	capabilities := domain.CapabilitiesFor(provider)
+	return entryStatus{
+		Name:            string(provider),
+		Kind:            "application_provider",
+		Role:            role,
+		AuthRequired:    capabilities.AuthRequired,
+		BrowserRequired: capabilities.BrowserRequired,
+		Inspect:         capabilities.Inspect,
+		Prepare:         capabilities.Prepare,
+		NativeSubmit:    capabilities.NativeSubmit,
+		Verification:    verification,
+		Notes:           notes,
 	}
 }
 

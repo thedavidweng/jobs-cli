@@ -388,6 +388,8 @@ Direct Indeed Apply submission is not part of the initial native application sur
 
 When a listing is Indeed Apply-only and no native implementation exists, the CLI must expose this clearly (`NATIVE_APPLY_UNSUPPORTED` / `BROWSER_REQUIRED` as appropriate) instead of attempting hidden browser automation.
 
+Indeed resolves as the `indeed` Application Provider with `auth_required=false, browser_required=true`. The browser flow may require an authenticated Indeed session, but jobs-cli manages no session for it, so the provider must not advertise `auth_required=true`.
+
 ### 11. LinkedIn Guest implementation
 
 Anonymous LinkedIn discovery must use the current Guest jobs endpoint.
@@ -698,7 +700,9 @@ The design should remain suitable for:
 
 `doctor` inspects local installation, config, session files, and optional connectivity (`--connect` where aligned with family).
 
-`sources status` reports discovery Sources and Application Providers with capabilities (auth required, browser required, native submit, verification posture).
+`sources status` reports discovery Sources and Application Providers with capabilities (auth required, browser required, native submit, verification posture). Its provider capability flags derive from the same canonical table the resolver uses (`resolve`, `show --resolve`, `apply inspect`), so the two surfaces cannot disagree.
+
+`auth_required` means the CLI-native operation requires CLI-managed authentication (a CLI session, for example the LinkedIn Session). It does not mean that a login may exist somewhere in the flow's UI: an Application Provider whose browser flow uses a candidate account that jobs-cli does not manage reports `auth_required=false`. A provider with no CLI-managed auth must never advertise `auth_required=true`.
 
 Do not merge these commands (ADR-0012).
 
