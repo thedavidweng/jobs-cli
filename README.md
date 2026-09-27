@@ -20,6 +20,15 @@ execution are routed independently.
 
 ## Install
 
+### AI agents
+
+Paste this into an AI agent that has its own persistent computer. It installs
+the [`jobs-cli` skill](skills/jobs-cli/SKILL.md) and the CLI:
+
+```text
+Read https://github.com/thedavidweng/jobs-cli/blob/main/skills/jobs-cli/SKILL.md and set up jobs-cli
+```
+
 ### Homebrew
 
 Install the stable release from the Homebrew tap (Cask, macOS and Linux):
