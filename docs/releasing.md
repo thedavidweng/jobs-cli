@@ -24,6 +24,9 @@ repository, workflow files, issues, or logs.
 4. The generated `v*` tag starts the Release workflow.
 5. GoReleaser builds archives for macOS, Linux, and Windows, creates the GitHub
    Release, and updates `Casks/jobs-cli.rb` in `homebrew-tap`.
+6. In parallel, the Release workflow requests the new tag from
+   `proxy.golang.org`, so `go install …/cmd/jobs-cli@latest`, the command in
+   the release notes and the README, resolves to it right away.
 
 The version baseline lives in `.release-please-manifest.json`. Each Release
 Please pull request bumps it together with `CHANGELOG.md`.

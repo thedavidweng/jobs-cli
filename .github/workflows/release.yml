@@ -52,3 +52,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+  go-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag_name || github.ref }}
+      - name: Refresh the Go module proxy
+        env:
+          TAG: ${{ inputs.tag_name || github.ref_name }}
+        run: |
+          set -euo pipefail
+          module_path="$(awk '$1 == "module" { print $2; exit }' go.mod)"
+          # proxy.golang.org caches its version list, so without this request
+          # `go install ...@latest` can keep returning the previous release.
+          curl -fsS --retry 3 "https://proxy.golang.org/${module_path}/@v/${TAG}.info"

@@ -37,7 +37,7 @@ jobs:
             'brew install --cask thedavidweng/tap/jobs-cli' \
             '' \
             '# Go' \
-            "go install ${module_path}/cmd/jobs-cli@${TAG}" \
+            "go install ${module_path}/cmd/jobs-cli@latest" \
             '```')"
           if gh release view "$TAG" >/dev/null 2>&1; then
             existing_notes="$(gh release view "$TAG" --json body --jq .body)"
