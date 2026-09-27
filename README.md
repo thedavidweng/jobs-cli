@@ -22,24 +22,23 @@ execution are routed independently.
 
 ### Homebrew
 
-There is not a tagged release yet. Install the current `main` build from the
-Homebrew tap:
+Install the stable release from the Homebrew tap (Cask, macOS and Linux):
 
 ```shell
 brew tap thedavidweng/tap
-brew install --HEAD thedavidweng/tap/jobs-cli
+brew install --cask thedavidweng/tap/jobs-cli
 ```
 
-After the first tagged release, GoReleaser will publish a stable Homebrew Cask:
+To build the current `main` branch from source instead:
 
 ```shell
-brew install --cask thedavidweng/tap/jobs-cli
+brew install --HEAD thedavidweng/tap/jobs-cli
 ```
 
 ### Go
 
 ```shell
-go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@main
+go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@latest
 ```
 
 ### Build from source
@@ -51,8 +50,8 @@ mise install
 mise run build
 ```
 
-GitHub Release downloads are enabled by the release workflow after a version
-tag is created. No release has been published by this repository yet.
+Release archives and `checksums.txt` for each tagged version are published on
+the [GitHub Releases](https://github.com/thedavidweng/jobs-cli/releases) page.
 
 ## Quickstart
 
