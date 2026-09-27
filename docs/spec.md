@@ -207,7 +207,7 @@ The following behavior is considered established project-family policy:
 - `--dry-run` to preview mutations (plan shape: Monarch-style `planned_mutations`).
 - `--confirm` to authorize mutations.
 - `--timeout`, `--profile`, and `--config` global controls.
-- Config directory `~/.jobs-cli` (Linux: XDG layout aligned with Qualtrics-style config home); env prefix `JOBS_*`.
+- Config directory: macOS `~/.jobs-cli`; Linux `${XDG_CONFIG_HOME:-~/.config}/jobs-cli`; Windows `%APPDATA%\jobs-cli` (fallback `~/.jobs-cli`); override with `JOBS_CONFIG_DIR`; env prefix `JOBS_*`.
 - Multi-profile `config.yaml` (Qualtrics-style); LinkedIn session stored in a separate per-profile session file (0700/0600), not in YAML.
 - Exactly one JSON document on stdout in normal JSON mode.
 - Diagnostics and human-readable errors go to stderr.
