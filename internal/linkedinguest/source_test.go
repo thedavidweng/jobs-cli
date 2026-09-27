@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/linkedinguest"
-	"github.com/thedavidweng/jobs-cli/internal/testutil"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/linkedinguest"
+	"github.com/thedavidweng/jobs-cli/v2/internal/testutil"
 )
 
 func fixture(t *testing.T, name string) string {

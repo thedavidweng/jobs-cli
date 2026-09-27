@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/artifact"
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/artifact"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 func requireCode(t *testing.T, err *joberrors.Error, code string) {

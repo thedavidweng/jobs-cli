@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 // Geo URN resolution follows the donor yashiels/linkedin-cli resolveLocation:

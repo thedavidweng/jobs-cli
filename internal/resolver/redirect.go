@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/thedavidweng/jobs-cli/internal/httpclient"
+	"github.com/thedavidweng/jobs-cli/v2/internal/httpclient"
 )
 
 const maxRedirects = 5

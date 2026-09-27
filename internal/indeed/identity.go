@@ -3,7 +3,7 @@ package indeed
 import (
 	"strings"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 )
 
 // Mobile client identity bundle, taken verbatim from the pinned upstream

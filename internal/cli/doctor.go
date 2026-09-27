@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/thedavidweng/jobs-cli/internal/version"
+	"github.com/thedavidweng/jobs-cli/v2/internal/version"
 )
 
 type doctorCheck struct {

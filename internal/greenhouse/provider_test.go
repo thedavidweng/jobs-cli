@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/greenhouse"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/greenhouse"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

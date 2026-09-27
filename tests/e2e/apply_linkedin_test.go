@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/cli"
+	"github.com/thedavidweng/jobs-cli/v2/internal/cli"
 )
 
 const voyagerDetailFixture = `{"data":{"detail":{"elements":[{"jobPostingDetailSection":[{"topCardV2":{"jobPostingCard":{"jobPostingTitle":"Engineer","primaryDescription":{"text":"Acme"},"tertiaryDescription":{"text":"Vancouver, BC · 2 days ago"}}}},{"jobDescription":{"jobPosting":{"description":{"text":"Build things"}}}}]}]}}}`

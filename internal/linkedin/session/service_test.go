@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 type fakeReader struct {

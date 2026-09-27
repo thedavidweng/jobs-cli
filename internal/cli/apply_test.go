@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	"github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/testutil"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	"github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/testutil"
 )
 
 func prepareFixture(t *testing.T) (*harness, *testutil.FakeProvider) {

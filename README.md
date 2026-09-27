@@ -47,7 +47,7 @@ brew install --HEAD thedavidweng/tap/jobs-cli
 ### Go
 
 ```shell
-go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@latest
+go install github.com/thedavidweng/jobs-cli/v2/cmd/jobs-cli@latest
 ```
 
 This requires the Go toolchain version declared in [`go.mod`](go.mod) (currently

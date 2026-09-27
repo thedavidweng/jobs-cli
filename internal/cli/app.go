@@ -13,12 +13,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/httpclient"
-	"github.com/thedavidweng/jobs-cli/internal/output"
-	"github.com/thedavidweng/jobs-cli/internal/registry"
-	"github.com/thedavidweng/jobs-cli/internal/safety"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/httpclient"
+	"github.com/thedavidweng/jobs-cli/v2/internal/output"
+	"github.com/thedavidweng/jobs-cli/v2/internal/registry"
+	"github.com/thedavidweng/jobs-cli/v2/internal/safety"
 )
 
 type Options struct {

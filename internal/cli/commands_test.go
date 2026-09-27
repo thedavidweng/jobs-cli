@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
 )
 
 func TestSourcesStatusAndDoctorReportDisjointContent(t *testing.T) {

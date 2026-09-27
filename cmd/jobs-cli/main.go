@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/thedavidweng/jobs-cli/internal/cli"
+	"github.com/thedavidweng/jobs-cli/v2/internal/cli"
 )
 
 func main() {

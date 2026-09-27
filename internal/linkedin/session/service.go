@@ -3,9 +3,9 @@ package session
 import (
 	"context"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
-	"github.com/thedavidweng/jobs-cli/internal/cookieimport"
-	"github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
+	"github.com/thedavidweng/jobs-cli/v2/internal/cookieimport"
+	"github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 type Service struct {

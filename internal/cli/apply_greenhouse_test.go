@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	"github.com/thedavidweng/jobs-cli/internal/greenhouse"
-	"github.com/thedavidweng/jobs-cli/internal/registry"
-	"github.com/thedavidweng/jobs-cli/internal/testutil"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	"github.com/thedavidweng/jobs-cli/v2/internal/greenhouse"
+	"github.com/thedavidweng/jobs-cli/v2/internal/registry"
+	"github.com/thedavidweng/jobs-cli/v2/internal/testutil"
 )
 
 const ghSchema = `{

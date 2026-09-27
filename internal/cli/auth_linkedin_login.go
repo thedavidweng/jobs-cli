@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/thedavidweng/jobs-cli/internal/cookieimport"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/cookieimport"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 const linkedInLoginURL = "https://www.linkedin.com/login"

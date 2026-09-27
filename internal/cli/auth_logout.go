@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 func authLogoutCmd(a *App) *cobra.Command {

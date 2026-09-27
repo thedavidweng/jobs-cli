@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/thedavidweng/jobs-cli/internal/artifact"
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	"github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/httpclient"
+	"github.com/thedavidweng/jobs-cli/v2/internal/artifact"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	"github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/httpclient"
 )
 
 const (

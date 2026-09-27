@@ -3,8 +3,8 @@ package testutil
 import (
 	"context"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	"github.com/thedavidweng/jobs-cli/internal/registry"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	"github.com/thedavidweng/jobs-cli/v2/internal/registry"
 )
 
 type FakeSource struct {

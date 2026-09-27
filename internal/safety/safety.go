@@ -3,7 +3,7 @@ package safety
 import (
 	"fmt"
 
-	"github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 type OperationTier string

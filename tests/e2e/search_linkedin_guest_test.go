@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/cli"
-	"github.com/thedavidweng/jobs-cli/internal/testutil"
+	"github.com/thedavidweng/jobs-cli/v2/internal/cli"
+	"github.com/thedavidweng/jobs-cli/v2/internal/testutil"
 )
 
 const linkedInGuestCards = `<ul class="jobs-search__results-list">

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 )
 
 type classification struct {

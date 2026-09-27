@@ -7,7 +7,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/thedavidweng/jobs-cli/internal/safety"
+	"github.com/thedavidweng/jobs-cli/v2/internal/safety"
 )
 
 type Renderer struct {
