@@ -3,10 +3,10 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -55,7 +55,7 @@ func (s *LinkedInSession) CSRFTokenValue() string {
 	if s.CSRFToken != "" {
 		return s.CSRFToken
 	}
-	return strings.Trim(s.Cookie(CookieJSessionID), `"`)
+	return TrimCookieQuotes(s.Cookie(CookieJSessionID))
 }
 
 func (s *LinkedInSession) Complete() bool {
@@ -75,12 +75,14 @@ func (s *LinkedInSession) CookieNames() []string {
 }
 
 type SessionStatus struct {
-	Present     bool     `json:"present"`
-	Complete    bool     `json:"complete"`
-	Path        string   `json:"path"`
-	CapturedAt  string   `json:"captured_at,omitempty"`
-	Browser     string   `json:"browser,omitempty"`
-	CookieNames []string `json:"cookie_names,omitempty"`
+	Present       bool     `json:"present"`
+	Complete      bool     `json:"complete"`
+	Invalid       bool     `json:"invalid"`
+	InvalidReason string   `json:"invalid_reason,omitempty"`
+	Path          string   `json:"path"`
+	CapturedAt    string   `json:"captured_at,omitempty"`
+	Browser       string   `json:"browser,omitempty"`
+	CookieNames   []string `json:"cookie_names,omitempty"`
 }
 
 type SessionStore struct {
@@ -142,6 +144,9 @@ func (s *SessionStore) Load() (*LinkedInSession, error) {
 	}
 	session := &LinkedInSession{}
 	if err := json.Unmarshal(data, session); err != nil {
+		return nil, fmt.Errorf("session file is not valid JSON: %w", err)
+	}
+	if err := ValidateLinkedInSession(session, s.profile); err != nil {
 		return nil, err
 	}
 	return session, nil
@@ -197,11 +202,16 @@ func (s *SessionStore) Remove() (bool, error) {
 
 func (s *SessionStore) Status() SessionStatus {
 	status := SessionStatus{Path: s.Path()}
-	session, err := s.Load()
-	if err != nil {
+	if _, err := os.Stat(s.Path()); err != nil {
 		return status
 	}
 	status.Present = true
+	session, err := s.Load()
+	if err != nil {
+		status.Invalid = true
+		status.InvalidReason = err.Error()
+		return status
+	}
 	status.Complete = session.Complete()
 	status.CapturedAt = session.CapturedAt
 	status.Browser = session.Browser

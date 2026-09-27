@@ -2,7 +2,9 @@
 
 `jobs-cli auth linkedin login` imports the LinkedIn web session from a local
 browser cookie store into a per-profile session file. The session file is the only
-place Voyager authentication material is stored.
+place Voyager authentication material is stored. The same JSON documented here is
+what the advanced/headless path `jobs-cli auth linkedin import --from-json -`
+reads from stdin.
 
 ## Location and permissions
 

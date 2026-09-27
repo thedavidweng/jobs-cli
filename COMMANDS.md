@@ -89,12 +89,26 @@ Available on every command:
 
 ## Account & Sources
 
-- `auth status`: whether an authenticated LinkedIn session is available.
+- `auth status`: whether an authenticated LinkedIn session is available. A
+  session file that exists but fails validation is reported as `present but
+  invalid` with the reason, not as absent.
 - `auth linkedin login`: guided session import — opens LinkedIn's login page,
   waits for you to finish, then imports Voyager cookies from your local browser
   cookie store into the per-profile session file.
   - `--browser chrome|safari|firefox`: override auto-detection
     (Chrome -> Safari -> Firefox). Session secrets are never printed.
+  - `--no-open`: skip the browser attempt; print the login URL and wait for you
+    to sign in manually, then continue with the import.
+  - When no browser opener is available (`open`, `xdg-open`, `start`), the
+    command prints the login URL and keeps waiting instead of failing.
+- `auth linkedin import --from-json -`: advanced/headless session import — read
+  the documented session JSON (see `docs/session-format.md`) from stdin
+  (`-`), validate it, and store it for the active profile with the CLI's
+  session-storage protections (0700 directory / 0600 file where the platform
+  supports Unix permission bits). For machines with no local browser cookie
+  store (servers, containers, agents); `auth linkedin login` remains the
+  primary path for humans. Invalid input fails with a validation error and
+  writes nothing.
 - `auth logout`: remove the local LinkedIn session.
 - `sources status`: discovery Sources and Application Providers with their
   capabilities (auth required, browser required, native submit) and

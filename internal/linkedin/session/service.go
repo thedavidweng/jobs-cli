@@ -29,6 +29,9 @@ func (s *Service) Login(ctx context.Context, browser string) (*config.LinkedInSe
 		return nil, errors.New(errors.LinkedInSessionRequired, "LinkedIn session import did not find both li_at and JSESSIONID cookies", errors.CatAuth, false, nil)
 	}
 	session.Profile = s.Store.Profile()
+	if err := config.ValidateLinkedInSession(session, s.Store.Profile()); err != nil {
+		return nil, errors.New(errors.LinkedInSessionRequired, "imported LinkedIn session is invalid: "+err.Error(), errors.CatAuth, false, nil)
+	}
 	if err := s.Store.Save(session); err != nil {
 		return nil, errors.New(errors.InternalError, err.Error(), errors.CatInternal, false, err)
 	}
