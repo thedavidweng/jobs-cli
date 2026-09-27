@@ -32,8 +32,8 @@ jobs:
             '# Installation' \
             '' \
             '```bash' \
-            '# Homebrew (source build until the first stable cask is published)' \
-            'brew install --HEAD thedavidweng/tap/jobs-cli' \
+            '# Homebrew (macOS and Linux)' \
+            'brew install --cask thedavidweng/tap/jobs-cli' \
             '' \
             '# Go' \
             "go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@${TAG}" \
