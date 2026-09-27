@@ -62,7 +62,7 @@ func (r *Resolver) Resolve(ctx context.Context, rawURL string) (*domain.Applicat
 		BoardToken:    c.boardToken,
 		Tenant:        c.tenant,
 		Site:          c.site,
-		Capabilities:  capabilitiesFor(c.provider),
+		Capabilities:  domain.CapabilitiesFor(c.provider),
 		Verification:  postureFor(c.provider),
 		ResolvedFrom:  resolvedFrom,
 	}, nil
