@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
 )
 
 const voyagerSearchFixture = `{"data":{"jobsDashJobCardsByJobSearch":{"paging":{"total":1},"elements":[{"jobCard":{"jobPostingCard":{"jobPostingTitle":"Swift Developer","primaryDescription":{"text":"Acme"},"secondaryDescription":{"text":"Vancouver, BC"},"jobPosting":{"entityUrn":"urn:li:fsd_jobPosting:42"}}}}]}}}`

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
-	"github.com/thedavidweng/jobs-cli/internal/linkedin/session"
-	"github.com/thedavidweng/jobs-cli/internal/registry"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
+	"github.com/thedavidweng/jobs-cli/v2/internal/linkedin/session"
+	"github.com/thedavidweng/jobs-cli/v2/internal/registry"
 )
 
 type loginReader struct{}

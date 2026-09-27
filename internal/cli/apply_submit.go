@@ -5,10 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/thedavidweng/jobs-cli/internal/artifact"
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/safety"
+	"github.com/thedavidweng/jobs-cli/v2/internal/artifact"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/safety"
 )
 
 type applySubmitFlags struct {

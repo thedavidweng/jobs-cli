@@ -3,7 +3,7 @@ package workday
 import (
 	"context"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 )
 
 type Provider struct{}

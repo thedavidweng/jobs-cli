@@ -3,7 +3,7 @@ package e2e
 import (
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/testutil"
+	"github.com/thedavidweng/jobs-cli/v2/internal/testutil"
 )
 
 func TestResolveJSONReturnsApplicationTargetOnly(t *testing.T) {

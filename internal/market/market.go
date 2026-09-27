@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 // Inputs are the market settings visible to one search.

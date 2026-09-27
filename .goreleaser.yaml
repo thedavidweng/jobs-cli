@@ -19,10 +19,10 @@ builds:
     binary: jobs-cli
     ldflags:
       - -s -w
-      - -X github.com/thedavidweng/jobs-cli/internal/version.Version={{.Version}}
-      - -X github.com/thedavidweng/jobs-cli/internal/version.Commit={{.Commit}}
-      - -X github.com/thedavidweng/jobs-cli/internal/version.Date={{.Date}}
-      - -X github.com/thedavidweng/jobs-cli/internal/version.BuiltBy=goreleaser
+      - -X {{.ModulePath}}/internal/version.Version={{.Version}}
+      - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
+      - -X {{.ModulePath}}/internal/version.Date={{.Date}}
+      - -X {{.ModulePath}}/internal/version.BuiltBy=goreleaser
 
 universal_binaries:
   - replace: true

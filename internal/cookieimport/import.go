@@ -7,8 +7,8 @@ import (
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 var browserOrder = []string{"chrome", "safari", "firefox"}

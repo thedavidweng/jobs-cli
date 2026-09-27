@@ -3,7 +3,7 @@
 Canonical product and implementation spec for `jobs-cli`, updated after the September 2026 grilling session. Domain vocabulary lives in [`CONTEXT.md`](../CONTEXT.md). Architectural decisions live in [`docs/adr/`](./adr/). Historical feasibility research informed the implementation but is intentionally not part of the public source tree.
 
 **Binary name:** `jobs-cli` (not `jobs` — shell builtin conflict; users may alias locally).  
-**Module:** `github.com/thedavidweng/jobs-cli`  
+**Module:** `github.com/thedavidweng/jobs-cli/v2`  
 **Entry:** `cmd/jobs-cli`
 
 ---
@@ -192,7 +192,7 @@ The following behavior is considered established project-family policy:
 - Go implementation.
 - Cobra command tree.
 - Single native binary named `jobs-cli`.
-- Module path `github.com/thedavidweng/jobs-cli`; entry `cmd/jobs-cli`.
+- Module path `github.com/thedavidweng/jobs-cli/v2` (the major-version suffix changes with each major release, ADR-0019); entry `cmd/jobs-cli`.
 - Human-readable output by default.
 - `--json` for machine-readable output.
 - `--pretty` for formatted JSON.

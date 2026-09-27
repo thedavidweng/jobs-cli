@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/thedavidweng/jobs-cli/internal/errors"
+import "github.com/thedavidweng/jobs-cli/v2/internal/errors"
 
 type PaginationKind string
 

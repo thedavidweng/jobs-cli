@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
 )
 
 const validImportJSON = `{"schema_version":"1","provider":"linkedin","profile":"default","captured_at":"2026-09-26T12:00:00Z","browser":"manual","csrf_token":"ajax:1234567890","cookies":{"li_at":"li-at-secret","JSESSIONID":"\"ajax:1234567890\""}}`

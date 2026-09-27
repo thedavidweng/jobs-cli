@@ -28,6 +28,7 @@ jobs:
           TAG: ${{ steps.rp.outputs.tag_name }}
         run: |
           set -euo pipefail
+          module_path="$(awk '$1 == "module" { print $2; exit }' go.mod)"
           install_notes="$(printf '%s\n' \
             '# Installation' \
             '' \
@@ -36,7 +37,7 @@ jobs:
             'brew install --cask thedavidweng/tap/jobs-cli' \
             '' \
             '# Go' \
-            "go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@${TAG}" \
+            "go install ${module_path}/cmd/jobs-cli@${TAG}" \
             '```')"
           if gh release view "$TAG" >/dev/null 2>&1; then
             existing_notes="$(gh release view "$TAG" --json body --jq .body)"

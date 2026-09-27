@@ -1,4 +1,4 @@
-module github.com/thedavidweng/jobs-cli
+module github.com/thedavidweng/jobs-cli/v2
 
 go 1.27.1
 

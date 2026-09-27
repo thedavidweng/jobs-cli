@@ -8,11 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/market"
-	"github.com/thedavidweng/jobs-cli/internal/output"
-	"github.com/thedavidweng/jobs-cli/internal/registry"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/market"
+	"github.com/thedavidweng/jobs-cli/v2/internal/output"
+	"github.com/thedavidweng/jobs-cli/v2/internal/registry"
 )
 
 type searchFlags struct {

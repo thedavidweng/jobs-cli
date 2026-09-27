@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thedavidweng/jobs-cli/internal/domain"
-	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
-	"github.com/thedavidweng/jobs-cli/internal/market"
+	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
+	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/market"
 )
 
 func normalizeJob(node *jobNode, marketCountry string) (*domain.Job, *joberrors.Error) {

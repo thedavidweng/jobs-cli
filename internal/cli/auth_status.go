@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/thedavidweng/jobs-cli/internal/config"
+	"github.com/thedavidweng/jobs-cli/v2/internal/config"
 )
 
 const linkedInSessionReplaceHint = "run `jobs-cli auth linkedin login` or `jobs-cli auth linkedin import --from-json -`"

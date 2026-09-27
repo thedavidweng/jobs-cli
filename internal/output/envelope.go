@@ -3,7 +3,7 @@ package output
 import (
 	"time"
 
-	"github.com/thedavidweng/jobs-cli/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/errors"
 )
 
 const SchemaVersion = "2026-09-26"
