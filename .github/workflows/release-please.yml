@@ -39,7 +39,16 @@ jobs:
             "go install github.com/thedavidweng/jobs-cli/cmd/jobs-cli@${TAG}" \
             '```')"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes "$install_notes"
+            existing_notes="$(gh release view "$TAG" --json body --jq .body)"
+            case "$existing_notes" in
+              *"# Installation"*)
+                echo "installation notes already present; leaving release notes unchanged"
+                exit 0
+                ;;
+            esac
+            gh release edit "$TAG" --notes "${existing_notes}
+
+${install_notes}"
           else
             gh release create "$TAG" --title "$TAG" --notes "$install_notes"
           fi
