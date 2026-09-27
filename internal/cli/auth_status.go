@@ -8,6 +8,8 @@ import (
 	"github.com/thedavidweng/jobs-cli/internal/config"
 )
 
+const linkedInSessionReplaceHint = "run `jobs-cli auth linkedin login` or `jobs-cli auth linkedin import --from-json -`"
+
 type authLinkedInStatus struct {
 	Authenticated bool                 `json:"authenticated"`
 	Verification  string               `json:"verification"`
@@ -49,7 +51,7 @@ func (a *App) runAuthStatus() error {
 		switch {
 		case status.Invalid:
 			fmt.Fprintf(a.out, "  present but invalid: %s\n", status.InvalidReason)
-			fmt.Fprintln(a.out, "  run `jobs-cli auth linkedin login` or `jobs-cli auth linkedin import --from-json -` to replace the session")
+			fmt.Fprintln(a.out, "  "+linkedInSessionReplaceHint+" to replace the session")
 		case !status.Present:
 			fmt.Fprintln(a.out, "  run `jobs-cli auth linkedin login` to import a session")
 		}

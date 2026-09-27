@@ -203,6 +203,11 @@ func (s *SessionStore) Remove() (bool, error) {
 func (s *SessionStore) Status() SessionStatus {
 	status := SessionStatus{Path: s.Path()}
 	if _, err := os.Stat(s.Path()); err != nil {
+		if !os.IsNotExist(err) {
+			status.Present = true
+			status.Invalid = true
+			status.InvalidReason = err.Error()
+		}
 		return status
 	}
 	status.Present = true
