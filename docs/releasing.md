@@ -39,13 +39,3 @@ To build the current `main` branch from source instead, use the formula:
 ```shell
 brew install --HEAD thedavidweng/tap/jobs-cli
 ```
-
-## Versioning
-
-Release Please uses the `always-bump-minor` versioning strategy, so every
-release bumps the minor version, whatever its commits contain. A breaking
-change (`feat!:` or a `BREAKING CHANGE:` footer) is still listed under
-BREAKING CHANGES in the changelog, but it does not bump the major version, and
-a fix-only release gets a new minor version rather than a patch. A major bump
-would also rename the Go module (`/v2`, see ADR-0019). Switch back to the
-`default` strategy when the project adopts strict semantic versioning.
