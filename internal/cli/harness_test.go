@@ -37,7 +37,7 @@ func (h *harness) withTransport(rt http.RoundTripper) *harness {
 
 func (h *harness) useRealRegistry() *harness {
 	h.factory = func(cfg *config.Config, client *http.Client) *registry.Registry {
-		return registry.New(registry.Options{Client: client, Config: cfg})
+		return registry.New(client, cfg)
 	}
 	return h
 }
@@ -58,7 +58,7 @@ func (h *harness) run(args ...string) (stdout, stderr string, code int) {
 	factory := h.factory
 	if factory == nil {
 		factory = func(cfg *config.Config, client *http.Client) *registry.Registry {
-			return registry.New(registry.Options{Client: client, Config: cfg})
+			return registry.New(client, cfg)
 		}
 	}
 	app := cli.New(&cli.Options{

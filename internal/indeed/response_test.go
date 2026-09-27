@@ -197,10 +197,3 @@ func TestSearchValidatesRequest(t *testing.T) {
 		})
 	}
 }
-
-func TestNameIsIndeed(t *testing.T) {
-	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
-	if got := newSource(r).Name(); got != domain.SourceIndeed {
-		t.Fatalf("source name = %s, want indeed", got)
-	}
-}

@@ -44,10 +44,6 @@ type BoardJob struct {
 	URL       string `json:"url,omitempty"`
 }
 
-func (p *Provider) Name() domain.ApplicationProvider {
-	return domain.ProviderGreenhouse
-}
-
 func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{Inspect: true, Prepare: true, NativeSubmit: true}
 }

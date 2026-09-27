@@ -11,11 +11,8 @@ import (
 	"github.com/thedavidweng/jobs-cli/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/internal/errors"
 	"github.com/thedavidweng/jobs-cli/internal/output"
+	"github.com/thedavidweng/jobs-cli/internal/registry"
 )
-
-type sourceRegistry interface {
-	Source(name domain.Source, authenticated bool) (domain.SourceAdapter, *joberrors.Error)
-}
 
 type searchFlags struct {
 	query         string
@@ -133,7 +130,7 @@ type partResult struct {
 	err       error
 }
 
-func searchOne(ctx context.Context, reg sourceRegistry, source domain.Source, f *searchFlags, country, locale string) partResult {
+func searchOne(ctx context.Context, reg *registry.Registry, source domain.Source, f *searchFlags, country, locale string) partResult {
 	adapter, aerr := reg.Source(source, f.authenticated)
 	if aerr != nil {
 		return partResult{

@@ -115,10 +115,6 @@ func (s *SessionStore) SetOverride(profile, path string) {
 	s.overrides[profile] = path
 }
 
-func (s *SessionStore) ConfigDir() string {
-	return s.baseDir
-}
-
 func (s *SessionStore) Dir() string {
 	return filepath.Join(s.baseDir, "sessions")
 }

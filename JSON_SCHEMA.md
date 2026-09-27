@@ -98,7 +98,7 @@ ranking:
 ```
 
 `meta.partitions` mirrors per-partition pagination. Native pagination models
-(cursor, offset, limit/skip, start/count) are preserved under `pagination.native`
+(cursor, offset, and start/count) are preserved under `pagination.native`
 so each source continues with its own primitive; continuation always names a
 single source.
 

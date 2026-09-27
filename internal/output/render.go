@@ -82,10 +82,6 @@ func (r *Renderer) PrintDiagnostic(msg string) {
 	fmt.Fprintln(r.Stderr, msg)
 }
 
-func (r *Renderer) Marshal(v any) string {
-	return r.marshal(v)
-}
-
 func (r *Renderer) marshal(v any) string {
 	var data []byte
 	if r.Pretty {

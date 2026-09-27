@@ -19,7 +19,7 @@ func TestLeverTargetThroughApplyInspectCommand(t *testing.T) {
 	job := domain.NewJob(domain.SourceIndeed, "source-a")
 	job.Title = "Engineer"
 	job.Application = &target
-	reg := testutil.NewRegistry(map[domain.Source]domain.SourceAdapter{domain.SourceIndeed: &testutil.FakeSource{SourceName: domain.SourceIndeed, Job: &job}}, &testutil.FakeResolver{}, map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderLever: lever.NewProvider(http.DefaultClient)})
+	reg := testutil.NewRegistry(map[domain.Source]domain.SourceAdapter{domain.SourceIndeed: &testutil.FakeSource{SourceName: domain.SourceIndeed, Job: &job}}, &testutil.FakeResolver{}, map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderLever: lever.NewProvider()})
 	var stdout, stderr bytes.Buffer
 	app := cli.New(&cli.Options{Stdout: &stdout, Stderr: &stderr, Stdin: strings.NewReader(""), ConfigDir: t.TempDir(), RegistryFactory: func(*config.Config, *http.Client) *registry.Registry { return reg }})
 	if code := app.Run([]string{"--json", "apply", "inspect", "indeed:source-a"}); code != 6 {

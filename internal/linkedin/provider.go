@@ -19,10 +19,6 @@ func NewProvider(client *http.Client, sessions *config.SessionStore) domain.Appl
 	return &Provider{Client: client, Sessions: sessions}
 }
 
-func (p *Provider) Name() domain.ApplicationProvider {
-	return domain.ProviderLinkedIn
-}
-
 func (p *Provider) Capabilities() domain.Capabilities {
 	return domain.Capabilities{
 		Inspect:         true,

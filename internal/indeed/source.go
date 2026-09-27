@@ -18,10 +18,6 @@ func NewSource(client *http.Client) domain.SourceAdapter {
 	return &Source{Client: client}
 }
 
-func (s *Source) Name() domain.Source {
-	return domain.SourceIndeed
-}
-
 func (s *Source) Search(ctx context.Context, req *domain.SearchRequest) (*domain.SearchPartition, error) {
 	if err := validateSearch(req); err != nil {
 		return nil, err
