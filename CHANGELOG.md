@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.2](https://github.com/thedavidweng/jobs-cli/compare/v2.0.1...v2.0.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* stop doctor from warning about a fresh install ([f58f1c4](https://github.com/thedavidweng/jobs-cli/commit/f58f1c4a46af51196d4b595eed7a33e80aac4a90))
+
+
+### Documentation
+
+* add install scripts and a license, and streamline the README ([1609738](https://github.com/thedavidweng/jobs-cli/commit/16097387ade20b5bea7b816cca60fc1771cba4f6))
+* point the agent skill at the install scripts ([53401bd](https://github.com/thedavidweng/jobs-cli/commit/53401bd0ff509e7c394488efa9582d6e162f5220))
+
 ## [2.0.1](https://github.com/thedavidweng/jobs-cli/compare/v2.0.0...v2.0.1) (2026-09-27)
 
 
