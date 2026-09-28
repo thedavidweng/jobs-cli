@@ -7,6 +7,8 @@ set -eu
 REPO="thedavidweng/jobs-cli"
 BINARY="jobs-cli"
 CASK="thedavidweng/tap/jobs-cli"
+BLOCK_START="# >>> jobs-cli >>>"
+BLOCK_END="# <<< jobs-cli <<<"
 
 step()  { printf '==> %s\n' "$1"; }
 die()   { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
@@ -101,8 +103,14 @@ install_binary() {
         *)             shell_profile="$HOME/.profile" ;;
       esac
 
-      printf "\n# >>> jobs-cli >>>\nexport PATH=\"%s:\$PATH\"\n# <<< jobs-cli <<<\n" "$bin_dir" >> "$shell_profile"
-      step "Added $bin_dir to PATH in $shell_profile"
+      path_line="export PATH=\"$bin_dir:\$PATH\""
+      if [ -f "$shell_profile" ] && grep -qxF -e "$path_line" "$shell_profile"; then
+        step "$shell_profile already adds $bin_dir to PATH"
+      elif printf '\n%s\n%s\n%s\n' "$BLOCK_START" "$path_line" "$BLOCK_END" 2>/dev/null >> "$shell_profile"; then
+        step "Added $bin_dir to PATH in $shell_profile"
+      else
+        step "Could not update $shell_profile. Add $bin_dir to your PATH yourself."
+      fi
       step "Run: export PATH=\"$bin_dir:\$PATH\" to use in current terminal"
       ;;
   esac
@@ -123,6 +131,51 @@ uninstall_binary() {
     step "Removing $bin_dir/$BINARY"
     rm -f "$bin_dir/$BINARY"
   fi
+  remove_path_block "$bin_dir"
+}
+
+# Other programs in the directory may rely on the PATH entry, so the block
+# goes only once the directory is empty.
+remove_path_block() {
+  path_line="export PATH=\"$1:\$PATH\""
+  tmp_file="$(mktemp)"
+  trap 'rm -f "$tmp_file"' EXIT INT TERM
+  for profile in "$HOME/.zprofile" "$HOME/.bash_profile" "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
+    [ -f "$profile" ] || continue
+    # Drops the block for this directory and the blank line written before
+    # it. Exits 1 when there is no such block.
+    PATH_LINE="$path_line" awk -v start="$BLOCK_START" -v end="$BLOCK_END" '
+      in_block {
+        block = block "\n" $0
+        if ($0 == ENVIRON["PATH_LINE"]) found = 1
+        if ($0 == end) {
+          in_block = 0
+          if (found) removed = 1
+          else { if (blank) print ""; print block }
+        }
+        next
+      }
+      $0 == start {
+        blank = held && prev == ""
+        if (held && !blank) print prev
+        held = 0; in_block = 1; found = 0; block = $0
+        next
+      }
+      { if (held) print prev; prev = $0; held = 1 }
+      END {
+        if (in_block) { if (blank) print ""; print block }
+        else if (held) print prev
+        exit removed ? 0 : 1
+      }
+    ' "$profile" > "$tmp_file" || continue
+    if [ -n "$(ls -A "$1" 2>/dev/null)" ]; then
+      step "Kept the PATH entry in $profile because $1 is not empty"
+    elif cat "$tmp_file" 2>/dev/null > "$profile"; then
+      step "Removed $1 from PATH in $profile"
+    else
+      step "Could not update $profile. Remove the $BLOCK_START block yourself."
+    fi
+  done
 }
 
 # --- Main ---
