@@ -32,7 +32,13 @@ jobs:
           install_notes="$(printf '%s\n' \
             '# Installation' \
             '' \
-            '```bash' \
+            '```shell' \
+            '# macOS and Linux' \
+            'curl -fsSL https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.sh | sh' \
+            '' \
+            '# Windows' \
+            'powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.ps1 | iex"' \
+            '' \
             '# Homebrew (macOS and Linux)' \
             'brew install --cask thedavidweng/tap/jobs-cli' \
             '' \
