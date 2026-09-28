@@ -123,6 +123,9 @@ brew uninstall --cask thedavidweng/tap/jobs-cli
 # install.sh
 curl -fsSL https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.sh | sh -s uninstall
 
+# install.ps1 (Windows)
+powershell -ExecutionPolicy ByPass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.ps1))) uninstall"
+
 # Go
 rm "$(go env GOPATH)/bin/jobs-cli"
 ```
