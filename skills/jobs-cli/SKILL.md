@@ -31,9 +31,9 @@ Do this once. Skip any step that is already done.
    ```
 
    An existing Homebrew or `go install` build also works.
-3. From a new shell, run `jobs-cli version` and `jobs-cli doctor`. The doctor
-   warning about a missing LinkedIn session is expected, because that login is
-   optional.
+3. From a new shell, run `jobs-cli version` and `jobs-cli doctor`. A `WARN`
+   line is a problem to fix or report to the user. An `info` line, such as an
+   absent LinkedIn session, is optional setup and needs no action.
 
 ## Use
 

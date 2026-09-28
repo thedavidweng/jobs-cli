@@ -80,8 +80,8 @@ func TestDoctorConnectAddsOptionalCheck(t *testing.T) {
 		}
 		if name, isConnect := check["check"].(string); isConnect && strings.HasPrefix(name, "connect:") {
 			seen[name] = true
-			if check["ok"] != false {
-				t.Fatalf("offline connect check %q should be false: %#v", name, check)
+			if check["ok"] != false || check["status"] != "warn" {
+				t.Fatalf("offline connect check %q should be a warn with ok=false: %#v", name, check)
 			}
 		}
 	}

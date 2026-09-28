@@ -2,8 +2,10 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"strings"
@@ -13,8 +15,17 @@ import (
 	"github.com/thedavidweng/jobs-cli/v2/internal/version"
 )
 
+// Doctor check statuses. info marks optional setup that is not done, which is
+// not a problem, so OK stays true for it and only warn sets OK to false.
+const (
+	checkOK   = "ok"
+	checkInfo = "info"
+	checkWarn = "warn"
+)
+
 type doctorCheck struct {
 	Check  string `json:"check"`
+	Status string `json:"status"`
 	OK     bool   `json:"ok"`
 	Detail string `json:"detail"`
 }
@@ -39,6 +50,8 @@ func doctorCmd(a *App) *cobra.Command {
 		Short:   "Check local installation, config, and session state",
 		Long: `doctor inspects the local installation: config file, config directory
 permissions, active profile, configured sources, session file, and version.
+Each check reports ok, info for optional setup that is not done (such as the
+LinkedIn login), or WARN for a problem to fix.
 Capability reporting for sources and providers lives in 'jobs-cli sources status'.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -60,22 +73,33 @@ func (a *App) runDoctor(cmd *cobra.Command, f *doctorFlags) error {
 	}
 
 	checks := make([]doctorCheck, 0, 8)
-	add := func(name string, ok bool, detail string) {
-		checks = append(checks, doctorCheck{Check: name, OK: ok, Detail: detail})
+	add := func(name, status, detail string) {
+		checks = append(checks, doctorCheck{Check: name, Status: status, OK: status != checkWarn, Detail: detail})
+	}
+	okOrWarn := func(ok bool) string {
+		if ok {
+			return checkOK
+		}
+		return checkWarn
 	}
 
 	if a.cfgErr != nil {
-		add("config_file", false, a.cfgErr.Error())
+		add("config_file", checkWarn, a.cfgErr.Error())
 	} else if _, err := os.Stat(path); err != nil {
-		add("config_file", true, path+" (not present; built-in defaults are in use)")
+		add("config_file", checkOK, path+" (not present; built-in defaults are in use)")
 	} else {
-		add("config_file", true, path)
+		add("config_file", checkOK, path)
 	}
 
-	if info, err := os.Stat(cfg.Dir()); err != nil {
-		add("config_dir", false, cfg.Dir()+" (not created yet)")
-	} else {
-		add("config_dir", info.IsDir(), fmt.Sprintf("%s (mode %04o)", cfg.Dir(), info.Mode().Perm()))
+	switch info, err := os.Stat(cfg.Dir()); {
+	case errors.Is(err, fs.ErrNotExist):
+		add("config_dir", checkOK, cfg.Dir()+" (not created yet; created when a LinkedIn session is first saved)")
+	case err != nil:
+		add("config_dir", checkWarn, err.Error())
+	case !info.IsDir():
+		add("config_dir", checkWarn, cfg.Dir()+" (not a directory)")
+	default:
+		add("config_dir", checkOK, fmt.Sprintf("%s (mode %04o)", cfg.Dir(), info.Mode().Perm()))
 	}
 
 	profileOK := cfg.Active != nil
@@ -83,24 +107,24 @@ func (a *App) runDoctor(cmd *cobra.Command, f *doctorFlags) error {
 	if cfg.ProfileName != "" {
 		profileName = cfg.ProfileName
 	}
-	add("profile", profileOK, profileName)
+	add("profile", okOrWarn(profileOK), profileName)
 
-	add("timeout", a.timeout > 0, a.timeout.String())
+	add("timeout", okOrWarn(a.timeout > 0), a.timeout.String())
 
 	sources := cfg.Sources()
-	add("sources", len(sources) > 0, strings.Join(sources, ", "))
+	add("sources", okOrWarn(len(sources) > 0), strings.Join(sources, ", "))
 
 	status := cfg.SessionStore().Status()
 	switch {
 	case status.Complete:
-		add("session", true, fmt.Sprintf("present (%s), cookies: %s", status.CapturedAt, strings.Join(status.CookieNames, ", ")))
+		add("session", checkOK, fmt.Sprintf("present (%s), cookies: %s", status.CapturedAt, strings.Join(status.CookieNames, ", ")))
 	case status.Invalid:
-		add("session", false, "present but invalid: "+status.InvalidReason+"; "+linkedInSessionReplaceHint)
+		add("session", checkWarn, "present but invalid: "+status.InvalidReason+"; "+linkedInSessionReplaceHint)
 	default:
-		add("session", false, "absent; run `jobs-cli auth linkedin login` for authenticated LinkedIn")
+		add("session", checkInfo, "absent (optional); run `jobs-cli auth linkedin login` for signed-in LinkedIn features")
 	}
 
-	add("version", true, version.GetVersion())
+	add("version", checkOK, version.GetVersion())
 
 	if f.connect {
 		for _, endpoint := range []struct{ name, url string }{
@@ -109,7 +133,7 @@ func (a *App) runDoctor(cmd *cobra.Command, f *doctorFlags) error {
 			{"greenhouse", "https://boards-api.greenhouse.io"},
 		} {
 			ok, detail := a.checkConnectivity(cmd.Context(), endpoint.url)
-			add("connect:"+endpoint.name, ok, detail)
+			add("connect:"+endpoint.name, okOrWarn(ok), detail)
 		}
 	}
 
@@ -139,11 +163,24 @@ func (a *App) printDoctor(report *doctorReport) {
 	fmt.Fprintf(a.out, "profile:     %s\n", report.Profile)
 	fmt.Fprintf(a.out, "config file: %s\n", report.ConfigFile)
 	fmt.Fprintf(a.out, "config dir:  %s\n", report.ConfigDir)
+	problems := 0
 	for _, check := range report.Checks {
-		status := "ok  "
-		if !check.OK {
-			status = "WARN"
+		label := "ok  "
+		switch check.Status {
+		case checkInfo:
+			label = "info"
+		case checkWarn:
+			label = "WARN"
+			problems++
 		}
-		fmt.Fprintf(a.out, "[%s] %-12s %s\n", status, check.Check, check.Detail)
+		fmt.Fprintf(a.out, "[%s] %-12s %s\n", label, check.Check, check.Detail)
+	}
+	switch problems {
+	case 0:
+		fmt.Fprintln(a.out, "\nNo problems found.")
+	case 1:
+		fmt.Fprintln(a.out, "\n1 problem found. Fix the WARN line above.")
+	default:
+		fmt.Fprintf(a.out, "\n%d problems found. Fix the WARN lines above.\n", problems)
 	}
 }

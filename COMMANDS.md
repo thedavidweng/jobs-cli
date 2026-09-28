@@ -139,7 +139,10 @@ Available on every command:
   that uses a login jobs-cli does not manage reports `auth_required: false`.
 - `doctor [--connect]`: local installation, config, and session checks;
   `--connect` adds optional connectivity checks for Indeed, LinkedIn, and
-  Greenhouse.
+  Greenhouse. Each check has a `status`: `ok`, `info` for optional setup that
+  is not done (such as an absent LinkedIn Session), or `warn` for a problem to
+  fix. `ok` is `false` only for `warn`. The text output ends with the number
+  of problems found.
 
 Notes:
 

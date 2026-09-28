@@ -87,6 +87,15 @@ func TestBinaryJSONContractsAndExitCodes(t *testing.T) {
 		if !ok || len(checks) == 0 {
 			t.Fatalf("data.checks = %#v", doc.Data)
 		}
+		for _, raw := range checks {
+			check, ok := raw.(map[string]any)
+			if !ok {
+				t.Fatalf("check = %#v", raw)
+			}
+			if check["status"] != "ok" && check["status"] != "info" {
+				t.Errorf("check %v status = %v, want ok or info with a clean config dir", check["check"], check["status"])
+			}
+		}
 		if _, ok := doc.Data["providers"]; ok {
 			t.Fatal("doctor must not report the provider matrix")
 		}

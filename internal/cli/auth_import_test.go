@@ -191,8 +191,8 @@ func TestAuthStatusAndDoctorReportPresentButInvalidSession(t *testing.T) {
 			continue
 		}
 		found = true
-		if check["ok"] != false {
-			t.Fatalf("doctor session check ok = %v, want false", check["ok"])
+		if check["ok"] != false || check["status"] != "warn" {
+			t.Fatalf("doctor session check = %#v, want warn with ok=false", check)
 		}
 		if detail, _ := check["detail"].(string); !strings.Contains(detail, "present but invalid") {
 			t.Fatalf("doctor session detail = %q, want present but invalid", detail)
@@ -200,5 +200,15 @@ func TestAuthStatusAndDoctorReportPresentButInvalidSession(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("doctor output has no session check")
+	}
+
+	doctorText, _, code := h.run("doctor")
+	if code != 0 {
+		t.Fatalf("human doctor exit = %d", code)
+	}
+	for _, want := range []string{"[WARN] session", "1 problem found. Fix the WARN line above."} {
+		if !strings.Contains(doctorText, want) {
+			t.Fatalf("human doctor output missing %q:\n%s", want, doctorText)
+		}
 	}
 }
