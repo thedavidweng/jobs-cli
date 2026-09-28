@@ -1,156 +1,162 @@
-# jobs-cli
+<h1 align="center">jobs-cli</h1>
 
-`jobs-cli` is a single-binary, agent-friendly CLI for discovering jobs and
-applying through supported application providers.
+<p align="center">
+  Agent-friendly CLI for finding jobs on Indeed and LinkedIn and applying from the terminal.
+</p>
 
-It keeps the **Source** where a job was discovered separate from the
-**Application Provider** that accepts the application. Discovery and application
-execution are routed independently.
+<p align="center">
+  <a href="https://github.com/thedavidweng/jobs-cli/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/thedavidweng/jobs-cli/ci.yml?branch=main&style=flat-square&label=ci" alt="CI"></a>
+  <a href="https://github.com/thedavidweng/jobs-cli/releases"><img src="https://img.shields.io/github/v/release/thedavidweng/jobs-cli?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/thedavidweng/jobs-cli/blob/main/LICENSE"><img src="https://img.shields.io/github/license/thedavidweng/jobs-cli?style=flat-square" alt="License"></a>
+  <img src="https://img.shields.io/badge/go-%3E%3D1.27-blue?style=flat-square" alt="Go">
+</p>
+
+`jobs-cli` is a single-binary CLI that searches Indeed and LinkedIn, finds the application provider behind each job (Greenhouse, Lever, Workday, and others), and submits your application from the terminal when the provider supports it. When it doesn't, you get the link to apply in a browser.
 
 ## Highlights
 
-- Indeed GraphQL and LinkedIn Guest discovery with partitioned results
-- Authenticated LinkedIn Voyager search and detail behind an explicit flag
-- ATS resolution for Greenhouse, Lever, Ashby, Workday, SmartRecruiters, iCIMS,
-  and external application pages
-- Greenhouse native application inspection, preparation, and submission
-- Stable JSON envelopes, exit codes, and machine-readable diagnostics
-- `--read-only`, `--dry-run`, and `--confirm` gates for remote mutations
-- No embedded AI, MCP server, CAPTCHA bypass, or hidden browser automation
+- Agent-first: stable JSON output with `--json`, distinct stdout/stderr, and predictable exit and error codes
+- Safety-first: `--read-only`, `--dry-run`, and `--confirm` gates, so no application is sent without `--confirm`
+- Search without logging in: Indeed and LinkedIn in one command, and if one source fails, the other still returns results
+- Finds where to apply: Greenhouse, Lever, Ashby, Workday, SmartRecruiters, iCIMS, or the employer's own site
+- Applies from the terminal: inspect the form, prepare an application you can review, then submit it (Greenhouse today)
+- Single binary: no runtime, containers, or sidecar service required
 
-## Install
+## Why
 
-### AI agents
+Job boards and application forms are built for browsers, and every employer's form is different. `jobs-cli` treats where you find a job and where you apply as separate steps, so scripts and agents can search, find the right application provider, and apply through one stable set of commands.
 
-Paste this into an AI agent that has its own persistent computer. It installs
-the [`jobs-cli` skill](skills/jobs-cli/SKILL.md) and the CLI:
+## Quickstart
+
+### Install
+
+Run the following on macOS or Linux:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.sh | sh
+```
+
+Run the following on Windows:
+
+```shell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.ps1 | iex"
+```
+
+On macOS and Linux, the installer detects Homebrew and uses it when available (recommended for easy upgrades). Otherwise it downloads the binary to `~/.local/bin`. On Windows, it installs to `%LOCALAPPDATA%\jobs-cli\bin`.
+
+**AI agents:** paste this into an agent that has its own persistent computer. It installs the [`jobs-cli` skill](skills/jobs-cli/SKILL.md) and the CLI.
 
 ```text
 Read https://github.com/thedavidweng/jobs-cli/blob/main/skills/jobs-cli/SKILL.md and set up jobs-cli
 ```
 
-### Homebrew
+<details>
+<summary>Other installation methods</summary>
 
-Install the stable release from the Homebrew tap (Cask, macOS and Linux):
+**Homebrew Cask (macOS/Linux):**
 
 ```shell
-brew tap thedavidweng/tap
 brew install --cask thedavidweng/tap/jobs-cli
 ```
 
-To build the current `main` branch from source instead:
-
-```shell
-brew install --HEAD thedavidweng/tap/jobs-cli
-```
-
-### Go
+**Go:** requires the Go version in [`go.mod`](go.mod). Distro packages often lag behind, so get Go from [go.dev/dl](https://go.dev/dl/).
 
 ```shell
 go install github.com/thedavidweng/jobs-cli/v2/cmd/jobs-cli@latest
 ```
 
-This requires the Go toolchain version declared in [`go.mod`](go.mod) (currently
-Go 1.27.1); install it from [go.dev/dl](https://go.dev/dl/) rather than a distro
-package, which can lag behind.
+`go install` builds may show `commit: none` in `jobs-cli version`. Release archives and the Homebrew cask carry full build metadata.
 
-`go install` builds carry reduced version metadata: the toolchain records the
-module version but not full VCS provenance, so `jobs-cli version` may print
-`(commit: none, date: unknown, built by: unknown)`. Release archives and the
-Homebrew cask are built with complete commit, date, and builder metadata.
+**Manual download:** grab the archive for your platform, including Windows, from the [latest GitHub Release](https://github.com/thedavidweng/jobs-cli/releases/latest), check it against `checksums.txt`, extract it, and place the `jobs-cli` binary on your `PATH`.
 
-### Build from source
+**Build from source:**
 
 ```shell
+# Latest main through Homebrew
+brew install --HEAD thedavidweng/tap/jobs-cli
+
+# Or build it yourself
 git clone https://github.com/thedavidweng/jobs-cli.git
 cd jobs-cli
-mise install
-mise run build
+go build ./cmd/jobs-cli
 ```
 
-Release archives and `checksums.txt` for each tagged version are published on
-the [GitHub Releases](https://github.com/thedavidweng/jobs-cli/releases) page.
+</details>
 
-## Quickstart
+### Set up
 
 ```shell
-# Discover jobs from Indeed and LinkedIn Guest
-jobs-cli search --query "backend engineer" --location "Vancouver, BC" --json
-
-# Inspect a normalized job and resolve its application provider
-jobs-cli show indeed:<source-job-id> --resolve --json
-jobs-cli resolve https://boards.greenhouse.io/acme/jobs/12345 --json
-
-# Inspect and prepare an application without submitting it
-jobs-cli apply inspect indeed:<source-job-id> --json
-jobs-cli apply prepare indeed:<source-job-id> --manifest application.json --out artifact.json
-
-# Check local configuration and provider capabilities
 jobs-cli doctor
-jobs-cli sources status
 ```
 
-Indeed discovery needs no login: `search` reaches Indeed and LinkedIn Guest
-anonymously, and `sources status` reports the Indeed discovery Source with
-`auth_required=false`. The one optional login is `auth linkedin login`, which
-imports a LinkedIn Session for authenticated LinkedIn (Voyager) search and
-LinkedIn Easy Apply; `auth status` reports only that per-profile LinkedIn
-Session. Applying through Indeed is a separate Application Provider path and
-stays browser-required.
-
-## Command surface
-
-```text
-jobs-cli search
-jobs-cli show
-jobs-cli resolve
-jobs-cli apply inspect | prepare | submit
-jobs-cli auth status | auth linkedin login | auth logout
-jobs-cli sources status
-jobs-cli doctor
-jobs-cli version
-jobs-cli completion
-```
-
-Full flags and behavior: [`COMMANDS.md`](COMMANDS.md). Machine-readable
-contract: [`JSON_SCHEMA.md`](JSON_SCHEMA.md).
-
-## Configuration
-
-The config file is `<config-dir>/config.yaml`, where `<config-dir>` defaults to:
-
-- macOS: `~/.jobs-cli`
-- Linux: `${XDG_CONFIG_HOME:-~/.config}/jobs-cli`
-- Windows: `%APPDATA%\jobs-cli`, falling back to `~/.jobs-cli` when `%APPDATA%`
-  is unavailable
-
-`JOBS_CONFIG_DIR` overrides the default directory on every platform.
-
-It carries named profiles. Indeed searches one country at a time (its market),
-and there is no default market. `search` takes the market from `--country`,
-else from the end of `--location` (a US state, Canadian province, or country,
-such as `"Austin, TX"` or `"London, United Kingdom"`), else from
-`JOBS_COUNTRY`, else from the profile:
-
-```yaml
-profiles:
-  default:
-    country: CA
-    locale: en-CA
-```
-
-If none of these names a market, the Indeed results fail with
-`MARKET_REQUIRED` and the other sources still run.
-
-Product specification: [`docs/spec.md`](docs/spec.md). Domain glossary:
-[`CONTEXT.md`](CONTEXT.md). Architecture decisions: [`docs/adr/`](docs/adr/).
-
-## Development
+`doctor` checks your installation, config, and session, and `jobs-cli sources status` shows what each source and application provider supports. Search works without an account. To turn on the signed-in LinkedIn features (job details, signed-in search, and Easy Apply forms), log in once:
 
 ```shell
-mise run check
+jobs-cli auth linkedin login
 ```
 
-The quality gate runs formatting, build, unit tests, and lint. Release
-configuration and required repository secrets are documented in
-[`docs/releasing.md`](docs/releasing.md).
+Then try it:
+
+```shell
+# Search Indeed and LinkedIn
+jobs-cli search --query "backend engineer" --location "Vancouver, BC"
+
+# Show a job from the results and find its application provider
+jobs-cli show indeed:<id> --resolve
+
+# Read the application form, then prepare an application (nothing is sent)
+jobs-cli apply inspect indeed:<id>
+jobs-cli apply prepare indeed:<id> --manifest application.json --out artifact.json
+
+# Submit it (this sends a real application)
+jobs-cli apply submit --artifact artifact.json --confirm
+```
+
+Indeed searches one country at a time. End `--location` with a US state, Canadian province, or country, pass `--country`, or set a default in the [configuration](COMMANDS.md#configuration). Otherwise the Indeed results fail with `MARKET_REQUIRED`. Add `--json` to any command for machine-readable output.
+
+### Uninstall
+
+```shell
+# Homebrew Cask
+brew uninstall --cask thedavidweng/tap/jobs-cli
+
+# install.sh
+curl -fsSL https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.sh | sh -s uninstall
+
+# Go
+rm "$(go env GOPATH)/bin/jobs-cli"
+```
+
+Remove local data if desired: `rm -rf ~/.jobs-cli` (on Linux, `~/.config/jobs-cli`, and on Windows, `%APPDATA%\jobs-cli`). This deletes your config and LinkedIn session.
+
+## Documentation
+
+**Reference:**
+
+- [Command Reference](COMMANDS.md): every command, flag, and exit code
+- [Configuration](COMMANDS.md#configuration): config file, profiles, and `JOBS_*` environment variables
+- [JSON Schema](JSON_SCHEMA.md): success and error envelopes, common objects, and error codes
+- [Session Format](docs/session-format.md): the LinkedIn session file
+- [Agent Skill](skills/jobs-cli/SKILL.md): setup and usage guide for AI agents
+- [Releasing](docs/releasing.md): how Release Please and GoReleaser publish a release
+- [Contributing](CONTRIBUTING.md): development setup and contribution guidelines
+
+**Explanation:**
+
+- [Safety Model](COMMANDS.md#safety-model): how `--read-only`, `--dry-run`, and `--confirm` gate every submission
+- [Specification](docs/spec.md): product scope and behavior
+- [Glossary](CONTEXT.md): domain terms such as Source and Application Provider
+- [Architecture Decisions](docs/adr/): the ADRs behind the design
+
+## Disclaimer
+
+`jobs-cli` is an independent, community-maintained project and is **not affiliated with, sponsored by, or endorsed by LinkedIn, Indeed, or any application provider it supports.**
+
+## Infrastructure
+
+- **CI/CD:** GitHub Actions + [mise](https://mise.jdx.dev/)
+- **Releases:** [Release Please](https://github.com/googleapis/release-please) + [GoReleaser](https://goreleaser.com/), published to GitHub Releases and the [Homebrew tap](https://github.com/thedavidweng/homebrew-tap)
+
+## License
+
+[Apache License 2.0](LICENSE)
