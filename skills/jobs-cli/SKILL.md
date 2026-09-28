@@ -12,11 +12,25 @@ Do this once. Skip any step that is already done.
 1. Install this skill persistently, in the location your agent loads skills
    from. Copy it verbatim from
    https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/skills/jobs-cli/SKILL.md
-2. If `jobs-cli` is not on `PATH`, download the archive for your OS and
-   architecture from https://github.com/thedavidweng/jobs-cli/releases/latest,
-   verify it against `checksums.txt`, and put the `jobs-cli` binary in a
-   persistent, user-writable directory on `PATH`. An existing Homebrew or
-   `go install` build also works.
+2. If `jobs-cli` is not on `PATH`, install it with the install script. Set
+   `JOBS_INSTALL_DIR` to a persistent, user-writable directory that is
+   already on `PATH`, because the `PATH` change the script makes may not
+   reach your shell.
+
+   macOS or Linux:
+
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.sh | JOBS_INSTALL_DIR=<dir> sh
+   ```
+
+   Windows, from PowerShell:
+
+   ```powershell
+   $env:JOBS_INSTALL_DIR = "<dir>"
+   powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/thedavidweng/jobs-cli/main/install.ps1 | iex"
+   ```
+
+   An existing Homebrew or `go install` build also works.
 3. From a new shell, run `jobs-cli version` and `jobs-cli doctor`. The doctor
    warning about a missing LinkedIn session is expected, because that login is
    optional.
