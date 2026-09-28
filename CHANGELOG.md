@@ -5,7 +5,7 @@
 
 ### Bug Fixes
 
-* use the /v2 module path so go install finds v2 releases ([811494c](https://github.com/thedavidweng/jobs-cli/commit/811494ce2a6fc8619b8b0ccfd1b0a7d2389f8248))
+* use the /v2 module path so go install finds v2 releases ([a31a20e](https://github.com/thedavidweng/jobs-cli/commit/a31a20e02f5b3ab81abfd862d211aadb2a7405b6))
 
 ## [2.0.0](https://github.com/thedavidweng/jobs-cli/compare/v1.0.0...v2.0.0) (2026-09-27)
 
@@ -16,23 +16,23 @@
 
 ### Features
 
-* add headless LinkedIn session import with shared validation ([94875a7](https://github.com/thedavidweng/jobs-cli/commit/94875a753c3683249917451e1f70fafc68915c3b)), closes [#17](https://github.com/thedavidweng/jobs-cli/issues/17)
-* resolve the Indeed market per search with no US default ([11957c4](https://github.com/thedavidweng/jobs-cli/commit/11957c4193bd492e001f49fda135529671e93c84))
+* add headless LinkedIn session import with shared validation ([6c5ed81](https://github.com/thedavidweng/jobs-cli/commit/6c5ed81a5be0b28447023747bf2b26431209c08c)), closes [#17](https://github.com/thedavidweng/jobs-cli/issues/17)
+* resolve the Indeed market per search with no US default ([5f49e5c](https://github.com/thedavidweng/jobs-cli/commit/5f49e5cbce5f9c718573d4db2800249c481ce2f4))
 
 
 ### Bug Fixes
 
-* address two-axis code review findings from issues [#16](https://github.com/thedavidweng/jobs-cli/issues/16)-[#18](https://github.com/thedavidweng/jobs-cli/issues/18) ([9ea4345](https://github.com/thedavidweng/jobs-cli/commit/9ea4345b4fd8f9853a995f6128f31951bb3606b1))
-* derive sources status provider capabilities from the resolver table ([44e5b4f](https://github.com/thedavidweng/jobs-cli/commit/44e5b4f212be369ab60af17759a0852a8f3b25a0)), closes [#18](https://github.com/thedavidweng/jobs-cli/issues/18)
+* address two-axis code review findings from issues [#16](https://github.com/thedavidweng/jobs-cli/issues/16)-[#18](https://github.com/thedavidweng/jobs-cli/issues/18) ([ca3ce44](https://github.com/thedavidweng/jobs-cli/commit/ca3ce44c1477579cac33b0a56c174e28b0c64fed))
+* derive sources status provider capabilities from the resolver table ([6286472](https://github.com/thedavidweng/jobs-cli/commit/62864729827bbd9e144567e20baad457abb419a4)), closes [#18](https://github.com/thedavidweng/jobs-cli/issues/18)
 
 
 ### Documentation
 
-* add agent setup skill and one-line README prompt ([837f6e0](https://github.com/thedavidweng/jobs-cli/commit/837f6e048e936f77180837b5a1ac551265eb7c6b))
-* add Indeed no-login note to sources status and fix spec config paths ([c06a63e](https://github.com/thedavidweng/jobs-cli/commit/c06a63efc3d727b85445b28fc5a906f9f953188c))
-* backfill the 1.0.0 changelog with the initial release content ([b28a1d1](https://github.com/thedavidweng/jobs-cli/commit/b28a1d1ba9ae8a8115ccf502b4bf5121e67a5c38))
-* clarify Go prerequisite, Indeed discovery auth, version provenance, and config paths ([5eab9dc](https://github.com/thedavidweng/jobs-cli/commit/5eab9dcf6bf45ecc0fe755698e29ce9b5e83d321)), closes [#16](https://github.com/thedavidweng/jobs-cli/issues/16)
-* update install instructions for the v1.0.0 release ([dad9f7d](https://github.com/thedavidweng/jobs-cli/commit/dad9f7da1e3619d93ecae64eb4ff1ada8cf04c4d))
+* add agent setup skill and one-line README prompt ([a1171fa](https://github.com/thedavidweng/jobs-cli/commit/a1171fad75df2d8e8c0bba265ed7beb55810f42b))
+* add Indeed no-login note to sources status and fix spec config paths ([2bfcba4](https://github.com/thedavidweng/jobs-cli/commit/2bfcba4c2985aecf5bfb357755213c1e4af260be))
+* backfill the 1.0.0 changelog with the initial release content ([3806021](https://github.com/thedavidweng/jobs-cli/commit/38060214cb097b6c52544aa6533031ee6e670288))
+* clarify Go prerequisite, Indeed discovery auth, version provenance, and config paths ([2b6169d](https://github.com/thedavidweng/jobs-cli/commit/2b6169dffab9743cdb10cb67129613bd7d09dbc8)), closes [#16](https://github.com/thedavidweng/jobs-cli/issues/16)
+* update install instructions for the v1.0.0 release ([336978c](https://github.com/thedavidweng/jobs-cli/commit/336978c4335b34c92878fa6b03e04eaf20292f83))
 
 ## 1.0.0 (2026-09-27)
 
@@ -68,4 +68,4 @@ Initial release of `jobs-cli`: a single-binary, agent-friendly CLI for discoveri
 
 ### Bug Fixes
 
-* assert session file permissions only on Unix platforms ([7011e9d](https://github.com/thedavidweng/jobs-cli/commit/7011e9db4294eaa0168d3e2c00077db7021f6ec5))
+* assert session file permissions only on Unix platforms ([e7596f8](https://github.com/thedavidweng/jobs-cli/commit/e7596f86aa05b40f1ff8896a46b095fba3cc8985))
