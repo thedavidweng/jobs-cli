@@ -201,6 +201,37 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			if code != 0 || decodeEnvelope(t, out).Data["status"] != "review_ready" {
 				t.Fatalf("fill: %s", out)
 			}
+			statePath := h.dir + "/state.json"
+			stateBytes, err := os.ReadFile(statePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var savedState map[string]json.RawMessage
+			if err := json.Unmarshal(stateBytes, &savedState); err != nil {
+				t.Fatal(err)
+			}
+			var completed map[string]string
+			if err := json.Unmarshal(savedState["steps"], &completed); err != nil {
+				t.Fatal(err)
+			}
+			delete(completed, "Questions")
+			steps, err := json.Marshal(completed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			savedState["steps"] = steps
+			skippedState, err := json.Marshal(savedState)
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.writeFile("state.json", string(skippedState))
+			for _, command := range []string{"fill", "submit"} {
+				out, code = run(command, "--artifact", path, "--confirm")
+				if code != 0 || decodeEnvelope(t, out).Data["status"] != "review_required" {
+					t.Fatalf("%s accepted a skipped prepared step: %s", command, out)
+				}
+			}
+			h.writeFile("state.json", string(stateBytes))
 			if err := fixtureEvaluate(ctx, `window.savedName`, &value); err != nil {
 				t.Fatal(err)
 			}
@@ -259,7 +290,7 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 				t.Fatal(err)
 			}
 			if employer == "bank-b" {
-				if err := fixtureEvaluate(ctx, `window.attempts=0;window.receipt=()=>{window.attempts++}`, nil); err != nil {
+				if err := fixtureEvaluate(ctx, `window.attempts=0;window.receipt=()=>{window.attempts++;document.body.insertAdjacentHTML("afterbegin",'<div data-automation-id="signInForm">Sign in</div>')}`, nil); err != nil {
 					t.Fatal(err)
 				}
 				out, code = run("submit", "--artifact", path, "--confirm")
@@ -278,6 +309,9 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 					t.Fatalf("submission attempts: %d", attempts)
 				}
 				return
+			}
+			if err := fixtureEvaluate(ctx, `document.querySelector('script').textContent+=';window.unrelated=42';document.body.insertAdjacentHTML('beforeend','<p hidden>Hidden diagnostic</p>')`, nil); err != nil {
+				t.Fatal(err)
 			}
 			out, code = run("submit", "--artifact", path, "--confirm")
 			if code != 0 || decodeEnvelope(t, out).Data["application_id"] != "R-42" {

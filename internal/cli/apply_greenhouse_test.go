@@ -50,11 +50,11 @@ func (s *ghStub) handle(req *http.Request) (*http.Response, error) {
 		s.gets++
 		return testutil.JSONResponse(http.StatusOK, s.schema), nil
 	case http.MethodPost:
+		s.posts++
 		user, password, ok := req.BasicAuth()
 		if !ok || user != "fixture-key" || password != "" {
 			return testutil.JSONResponse(http.StatusUnauthorized, `{"error":"key required"}`), nil
 		}
-		s.posts++
 		s.postURL = req.URL.String()
 		s.postType = req.Header.Get("Content-Type")
 		s.postBody, _ = io.ReadAll(req.Body)

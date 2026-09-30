@@ -59,5 +59,5 @@
   if (buttons.length===1) controls[key]=selector(buttons[0]);
  }
  const tasks=[...document.querySelectorAll('[data-automation-id="candidateHomeTask"]')].map(text);
- return {url:location.href,step,pending,fields,questions,sections,controls,values,review:controls.submit?text(document.body):'',receipt,application_id:text(document.querySelector('[data-automation-id="applicationId"]')),tasks};
+ return {url:location.href,step,pending,fields,questions,sections,controls,values,review:controls.submit?document.body.innerText.trim():'',receipt,application_id:text(document.querySelector('[data-automation-id="applicationId"]')),tasks};
 }

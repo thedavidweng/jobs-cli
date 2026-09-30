@@ -298,6 +298,22 @@ func approved(a *domain.ApplicationArtifact, i *domain.ApplicationInspection) bo
 	return false
 }
 
+func completedPreparedSteps(a *domain.ApplicationArtifact, state *workflowState, current *pageSnapshot) bool {
+	if !a.RequirementsValidated || len(state.Steps) == 0 {
+		return false
+	}
+	for index := range a.BrowserSteps {
+		step := &a.BrowserSteps[index]
+		if step.PendingAction != "" || step.Step == current.Step {
+			continue
+		}
+		if state.Steps[step.Step] != step.Fingerprint {
+			return false
+		}
+	}
+	return true
+}
+
 func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (*domain.SubmissionResult, error) {
 	state, err := p.load(&req.Artifact)
 	if err != nil {
@@ -346,7 +362,7 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 					return result, nil
 				}
 			}
-			if len(state.Steps) == 0 {
+			if !completedPreparedSteps(&req.Artifact, &state, &page) {
 				return outcome("review_required", &page), nil
 			}
 			if state.ReviewHash != "" && state.ReviewHash != reviewHash(&page) {
@@ -489,23 +505,17 @@ func (p *BrowserProvider) Submit(ctx context.Context, req *domain.SubmitRequest)
 	if page.Receipt != "" {
 		return receipt(&page), nil
 	}
-	if page.Pending != "" {
-		return outcome(page.Pending, &page), nil
-	}
 	if state.SubmissionAttempted {
 		return outcome("submission_uncertain", &page), nil
 	}
-	if state.ReviewHash == "" || page.Controls["submit"] == "" {
+	if page.Pending != "" {
+		return outcome(page.Pending, &page), nil
+	}
+	if state.ReviewHash == "" || page.Controls["submit"] == "" || !completedPreparedSteps(&req.Artifact, &state, &page) {
 		return outcome("review_required", &page), nil
 	}
 	if state.ReviewHash != reviewHash(&page) {
 		return nil, validation("browser values changed after fill review; fill and review again")
-	}
-	for index := range req.Artifact.BrowserSteps {
-		step := &req.Artifact.BrowserSteps[index]
-		if previous, ok := state.Steps[step.Step]; ok && previous != step.Fingerprint {
-			return nil, validation("prepared requirements changed since fill")
-		}
 	}
 	state.SubmissionAttempted = true
 	if err := p.save(&state); err != nil {

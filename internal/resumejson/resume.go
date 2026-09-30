@@ -4,6 +4,7 @@ package resumejson
 import (
 	_ "embed"
 	"encoding/json"
+	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
@@ -64,7 +65,7 @@ func Parse(data []byte) (domain.Candidate, *errors.Error) {
 	b := resume.Basics
 	candidate := domain.Candidate{FullName: b.Name, Email: b.Email, Phone: b.Phone, Website: b.URL, Location: b.Location.City, Address: map[string]string{"address_line": b.Location.Address, "postal_code": b.Location.PostalCode, "country": b.Location.Country, "region": b.Location.Region}, Work: resume.Work, Education: resume.Education, Skills: resume.Skills, Languages: resume.Languages, Certificates: resume.Certificates}
 	for _, profile := range b.Profiles {
-		if profile.Network == "LinkedIn" {
+		if strings.EqualFold(strings.TrimSpace(profile.Network), "LinkedIn") {
 			candidate.LinkedIn = profile.URL
 		}
 	}

@@ -31,7 +31,7 @@ type applyPrepareFlags struct {
 
 type prepareInput struct {
 	candidateKeys map[string]json.RawMessage
-	ResumeJSON    json.RawMessage            `json:"resume_json,omitempty"`
+	ResumeJSON    json.RawMessage            `json:"-"`
 	Candidate     domain.Candidate           `json:"candidate"`
 	Answers       []domain.ApplicationAnswer `json:"answers"`
 	Attachments   []domain.Attachment        `json:"attachments"`
@@ -219,9 +219,13 @@ func parsePrepareInput(data []byte, flag string) (prepareInput, *joberrors.Error
 		return prepareInput{}, invalid(flag + " is not valid JSON: " + err.Error())
 	}
 	var raw struct {
-		Candidate map[string]json.RawMessage `json:"candidate"`
+		Candidate  map[string]json.RawMessage `json:"candidate"`
+		ResumeJSON json.RawMessage            `json:"resume_json"`
 	}
 	_ = json.Unmarshal(data, &raw)
+	if len(raw.ResumeJSON) > 0 {
+		return prepareInput{}, invalid(flag + " does not support embedded resume_json; use --resume-json <path>")
+	}
 	input.candidateKeys = raw.Candidate
 	if len(input.Answers) == 0 {
 		asMap := map[string]any{}
@@ -265,7 +269,9 @@ func mergePrepareInput(base, override *prepareInput) {
 		base.candidateKeys[key] = value
 	}
 	merged, _ := json.Marshal(values)
-	_ = json.Unmarshal(merged, &base.Candidate)
+	var candidate domain.Candidate
+	_ = json.Unmarshal(merged, &candidate)
+	base.Candidate = candidate
 	if len(override.Answers) > 0 {
 		base.Answers = override.Answers
 	}
@@ -282,7 +288,12 @@ func mergePrepareInput(base, override *prepareInput) {
 
 func collectAttachments(input *prepareInput, f *applyPrepareFlags) ([]domain.Attachment, *joberrors.Error) {
 	attachments := make([]domain.Attachment, 0, len(input.Attachments))
+	kinds := map[string]bool{}
 	for _, item := range input.Attachments {
+		if kinds[item.Kind] {
+			return nil, invalid("ambiguous attachments for kind " + item.Kind)
+		}
+		kinds[item.Kind] = true
 		normalized, err := attachmentFromFile(item.Kind, item.Path)
 		if err != nil {
 			return nil, err
@@ -295,10 +306,21 @@ func collectAttachments(input *prepareInput, f *applyPrepareFlags) ([]domain.Att
 	}{
 		{"resume", input.Resume},
 		{"cover_letter", input.CoverLetter},
-		{"resume", f.resume},
-		{"cover_letter", f.coverLetter},
 	}
 	for _, source := range sources {
+		if source.path == "" {
+			continue
+		}
+		if kinds[source.kind] {
+			return nil, invalid("ambiguous attachments for kind " + source.kind)
+		}
+		attachment, err := attachmentFromFile(source.kind, source.path)
+		if err != nil {
+			return nil, err
+		}
+		attachments = append(attachments, attachment)
+	}
+	for _, source := range []struct{ kind, path string }{{"resume", f.resume}, {"cover_letter", f.coverLetter}} {
 		if source.path == "" {
 			continue
 		}

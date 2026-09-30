@@ -167,6 +167,16 @@ func TestInspectRequiresBoardIdentifiers(t *testing.T) {
 	requireCode(t, err, "ATS_RESOLUTION_FAILED")
 }
 
+func TestSubmitRequiresBoardIdentifiersBeforeCredentials(t *testing.T) {
+	provider := &greenhouse.Provider{Client: newClient(func(*http.Request) (*http.Response, error) {
+		t.Fatal("no request should be sent without board identifiers")
+		return nil, nil
+	})}
+	target := domain.ApplicationTarget{URL: "https://example.com/jobs/1", Provider: domain.ProviderGreenhouse}
+	_, err := provider.Submit(context.Background(), &domain.SubmitRequest{Target: target})
+	requireCode(t, err, "ATS_RESOLUTION_FAILED")
+}
+
 func TestInspectSurfacesSchemaDrift(t *testing.T) {
 	client := newClient(func(*http.Request) (*http.Response, error) {
 		return &http.Response{

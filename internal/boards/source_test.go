@@ -126,3 +126,22 @@ func TestCivicSearchLimitsDetailConcurrency(t *testing.T) {
 		t.Fatalf("jobs=%d, concurrent detail requests=%d", len(result.Jobs), peak.Load())
 	}
 }
+
+func TestCivicSearchStopsAfterDetailFailure(t *testing.T) {
+	var requests atomic.Int32
+	s := New(domain.SourceCivicInfo, &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Query().Get("jobid") == "" {
+			body := `<p class="showing"><span>12</span></p>`
+			for id := range 12 {
+				body += fmt.Sprintf(`<li class="jobbox-%d"><div class="title"><a href="careers?jobid=%d">Engineer</a></div></li>`, id+1, id+1)
+			}
+			return reply(r, 200, body), nil
+		}
+		requests.Add(1)
+		return reply(r, http.StatusForbidden, "challenge"), nil
+	})})
+	_, err := s.Search(context.Background(), &domain.SearchRequest{Limit: 12})
+	if err == nil || joberrors.From(err).Code != joberrors.APIAccessForbidden || requests.Load() > 4 {
+		t.Fatalf("error=%v, detail requests after rejection=%d", err, requests.Load())
+	}
+}

@@ -309,14 +309,11 @@ func (s *Source) hydrate(ctx context.Context, jobs []domain.Job) ([]domain.Job, 
 	details := make([]domain.Job, len(jobs))
 	errs := make([]error, len(jobs))
 	var wg sync.WaitGroup
-	slots := make(chan struct{}, 4)
 	for i := range jobs {
 		j := &jobs[i]
-		slots <- struct{}{}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			defer func() { <-slots }()
 			var detail *domain.Job
 			if s.name == domain.SourceTransLink {
 				detail, errs[i] = s.transDetailURL(ctx, j.SourceJobID, j.SourceURL)

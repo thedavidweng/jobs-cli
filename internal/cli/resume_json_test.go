@@ -1,7 +1,9 @@
 package cli_test
 
 import (
+	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -13,9 +15,73 @@ import (
 	"github.com/thedavidweng/jobs-cli/v2/internal/testutil"
 )
 
+func TestPrepareRejectsEmbeddedResumeJSON(t *testing.T) {
+	for _, flag := range []string{"--manifest", "--answers"} {
+		t.Run(flag, func(t *testing.T) {
+			h, _ := prepareFixture(t)
+			input := h.writeFile("embedded.json", `{"resume_json":{"basics":{"email":"ada@example.com"}},"answers":[{"question_id":"q1","value":"Because"}]}`)
+			out, _, code := h.run("--json", "apply", "prepare", "indeed:1", flag, input)
+			doc := decodeEnvelope(t, out)
+			requireCode(t, &doc, "INVALID_ARGUMENTS", 2, code)
+			if !strings.Contains(doc.Error.Message, "--resume-json") {
+				t.Fatalf("missing supported input instruction: %s", out)
+			}
+		})
+	}
+}
+
+func TestPrepareRejectsAmbiguousAttachmentKindsAndAllowsFlagOverride(t *testing.T) {
+	for _, test := range []struct {
+		name              string
+		duplicateProperty bool
+		flagOverride      bool
+	}{
+		{name: "duplicate array kind"},
+		{name: "duplicate property kind", duplicateProperty: true},
+		{name: "explicit flag override", flagOverride: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			h, _ := prepareFixture(t)
+			first := h.writeFile("first.pdf", "first")
+			second := h.writeFile("second.pdf", "second")
+			body := fmt.Sprintf(`{"candidate":{"email":"ada@example.com"},"answers":[{"question_id":"q1","value":"Because"}],"attachments":[{"kind":"resume","path":%q}`, first)
+			switch {
+			case test.flagOverride:
+				body += `]}`
+			case test.duplicateProperty:
+				body += fmt.Sprintf(`],"resume":%q}`, second)
+			default:
+				body += fmt.Sprintf(`,{"kind":"resume","path":%q}]}`, second)
+			}
+			manifest := h.writeFile("attachments.json", body)
+			args := []string{"--json", "apply", "prepare", "indeed:1", "--manifest", manifest}
+			if test.flagOverride {
+				args = append(args, "--resume", second)
+			}
+			out, _, code := h.run(args...)
+			doc := decodeEnvelope(t, out)
+			if !test.flagOverride {
+				requireCode(t, &doc, "INVALID_ARGUMENTS", 2, code)
+				return
+			}
+			if code != 0 {
+				t.Fatalf("flag override: %s", out)
+			}
+			attachments, ok := doc.Data["attachments"].([]any)
+			if !ok || len(attachments) != 1 {
+				t.Fatalf("attachments: %s", out)
+			}
+			attachment, ok := attachments[0].(map[string]any)
+			if !ok || attachment["path"] != second {
+				t.Fatalf("flag did not override manifest: %s", out)
+			}
+		})
+	}
+}
+
 func TestPrepareJSONResumePreservesIdentityHistoryAndOverrides(t *testing.T) {
 	h, _ := prepareFixture(t)
-	resume := h.writeFile("resume.json", `{"basics":{"name":"Ada Byron Lovelace","email":"base@example.com"},"work":[{"name":"Engine","position":"Programmer","startDate":"1842"}],"projects":[{"name":"Notes"}]}`)
+	resume := h.writeFile("resume.json", `{"basics":{"name":"Ada Byron Lovelace","email":"base@example.com","profiles":[{"network":" linkedin ","url":"https://www.linkedin.com/in/ada"}]},"work":[{"name":"Engine","position":"Programmer","startDate":"1842"}],"projects":[{"name":"Notes"}]}`)
 	manifest := h.writeFile("override.json", `{"candidate":{"email":"reviewed@example.com"},"answers":[{"question_id":"q1","value":"Because"}]}`)
 	out, _, code := h.run("--json", "apply", "prepare", "indeed:1", "--resume-json", resume, "--manifest", manifest)
 	if code != 0 {
@@ -26,7 +92,7 @@ func TestPrepareJSONResumePreservesIdentityHistoryAndOverrides(t *testing.T) {
 	if !ok {
 		t.Fatalf("candidate: %s", out)
 	}
-	if candidate["full_name"] != "Ada Byron Lovelace" || candidate["email"] != "reviewed@example.com" || candidate["first_name"] != nil {
+	if candidate["full_name"] != "Ada Byron Lovelace" || candidate["email"] != "reviewed@example.com" || candidate["first_name"] != nil || candidate["linkedin"] != "https://www.linkedin.com/in/ada" {
 		t.Fatalf("candidate: %#v", candidate)
 	}
 	rows, ok := candidate["work"].([]any)
@@ -43,6 +109,31 @@ func TestPrepareJSONResumePreservesIdentityHistoryAndOverrides(t *testing.T) {
 	raw, ok := doc.Data["resume_json"].(map[string]any)
 	if !ok || raw["projects"] == nil {
 		t.Fatal("unmapped projects were lost")
+	}
+}
+
+func TestPrepareJSONResumeNestedManifestValuesReplaceResumeValues(t *testing.T) {
+	h, _ := prepareFixture(t)
+	resume := h.writeFile("resume.json", `{"basics":{"email":"base@example.com","location":{"address":"Old street","postalCode":"V1V 1V1","city":"Vancouver","countryCode":"CA","region":"BC"}},"work":[{"name":"Old employer","position":"Old title","summary":"Old description","startDate":"2020"}],"education":[{"institution":"Old school","studyType":"Old degree","area":"Old subject","startDate":"2010"}]}`)
+	manifest := h.writeFile("override.json", `{"candidate":{"address":{"country":"US"},"work":[{"name":"New employer","position":"New title"}],"education":[{"institution":"New school"}]},"answers":[{"question_id":"q1","value":"Because"}]}`)
+	out, _, code := h.run("--json", "apply", "prepare", "indeed:1", "--resume-json", resume, "--manifest", manifest)
+	if code != 0 {
+		t.Fatalf("prepare: %s", out)
+	}
+	doc := decodeEnvelope(t, out)
+	candidate, ok := doc.Data["candidate"].(map[string]any)
+	if !ok {
+		t.Fatalf("candidate: %s", out)
+	}
+	want := map[string]any{
+		"address":   map[string]any{"country": "US"},
+		"work":      []any{map[string]any{"name": "New employer", "position": "New title"}},
+		"education": []any{map[string]any{"institution": "New school"}},
+	}
+	for key, expected := range want {
+		if !reflect.DeepEqual(candidate[key], expected) {
+			t.Errorf("%s retained stale resume data: got %#v, want %#v", key, candidate[key], expected)
+		}
 	}
 }
 

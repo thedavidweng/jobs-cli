@@ -117,11 +117,11 @@ func (p *Provider) Submit(ctx context.Context, req *domain.SubmitRequest) (*doma
 		return nil, errors.New(errors.InternalError, "greenhouse submit requires a request", errors.CatInternal, false, nil)
 	}
 	token, jobID, err := boardIdentifiers(&req.Target)
-	if p.APIKey == "" || p.Board != token {
-		return nil, errors.New(errors.AuthRequired, "Greenhouse submission requires an employer Job Board API key scoped to board "+token, errors.CatAuth, false, nil)
-	}
 	if err != nil {
 		return nil, err
+	}
+	if p.APIKey == "" || p.Board != token {
+		return nil, errors.New(errors.AuthRequired, "Greenhouse submission requires an employer Job Board API key scoped to board "+token, errors.CatAuth, false, nil)
 	}
 	detail, err := p.fetchJob(ctx, token, jobID)
 	if err != nil {

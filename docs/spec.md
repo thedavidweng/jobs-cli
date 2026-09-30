@@ -886,7 +886,7 @@ The following are explicitly out of scope for this spec:
 - Automatic screening-question reasoning.
 - Autonomous mass application.
 - Scheduled/background job monitoring.
-- Browser automation inside the CLI (except opening the system browser for LinkedIn login guidance).
+- Browser automation inside the CLI, except opening the system browser for LinkedIn login guidance and the explicit Workday CDP workflow (ADR-0022).
 - Playwright dependency or Node sidecar.
 - CAPTCHA solving or bypass.
 - Anti-bot bypass beyond reproducing already-verified normal official-client request behavior.
