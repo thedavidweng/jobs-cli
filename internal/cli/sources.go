@@ -17,6 +17,8 @@ type entryStatus struct {
 	BrowserRequired bool   `json:"browser_required"`
 	Inspect         bool   `json:"inspect"`
 	Prepare         bool   `json:"prepare"`
+	BrowserFill     bool   `json:"browser_fill"`
+	BrowserSubmit   bool   `json:"browser_submit"`
 	NativeSubmit    bool   `json:"native_submit"`
 	Verification    string `json:"verification"`
 	Notes           string `json:"notes,omitempty"`
@@ -81,18 +83,18 @@ func discoverySources() []entryStatus {
 
 func applicationProviders() []entryStatus {
 	return []entryStatus{
-		providerEntry(domain.ProviderGreenhouse, "native", string(domain.VerifiedWorking),
-			"public Board API; first native end-to-end application path"),
+		providerEntry(domain.ProviderGreenhouse, "authorized-api", string(domain.PartiallyVerified),
+			"public GET; POST requires an employer Job Board API key scoped to this board"),
 		providerEntry(domain.ProviderLinkedIn, "native", string(domain.VerifiedSourceImpl),
 			"Easy Apply inspect is available when LinkedIn-native apply is offered; non-Easy-Apply jobs are BROWSER_REQUIRED; submit stays disabled until live verification (LINKEDIN_EASY_APPLY_UNVERIFIED)"),
 		providerEntry(domain.ProviderIndeed, "browser", string(domain.BrowserRequiredPosture),
-			"the browser flow may require an authenticated Indeed session; jobs-cli does not manage it"),
+			"local preparation has unvalidated requirements; complete through Indeed official tooling"),
 		providerEntry(domain.ProviderLever, "browser", string(domain.BrowserRequiredPosture),
 			"candidate application is browser-only; jobs-cli does not provide a structured read API"),
 		providerEntry(domain.ProviderAshby, "browser", string(domain.BrowserRequiredPosture),
 			"candidate application is browser-only; jobs-cli does not provide a structured read API"),
-		providerEntry(domain.ProviderWorkday, "browser", string(domain.BrowserRequiredPosture),
-			"candidate account, verification, and application wizard stay in the browser"),
+		providerEntry(domain.ProviderWorkday, "browser-runtime", string(domain.PartiallyVerified),
+			"explicit local CDP tab; fixture-verified fill/review/receipt; login, verification and unsupported controls pause for the user"),
 		providerEntry(domain.ProviderSmartRecruiters, "browser", string(domain.BrowserRequiredPosture),
 			"candidate application is browser-only; jobs-cli does not provide a structured read API"),
 		providerEntry(domain.ProviderICIMS, "browser", string(domain.PartiallyVerified),
@@ -117,9 +119,10 @@ func providerEntry(provider domain.ApplicationProvider, role, verification, note
 		BrowserRequired: capabilities.BrowserRequired,
 		Inspect:         capabilities.Inspect,
 		Prepare:         capabilities.Prepare,
-		NativeSubmit:    capabilities.NativeSubmit,
-		Verification:    verification,
-		Notes:           notes,
+		BrowserFill:     capabilities.BrowserFill, BrowserSubmit: capabilities.BrowserSubmit,
+		NativeSubmit: capabilities.NativeSubmit,
+		Verification: verification,
+		Notes:        notes,
 	}
 }
 

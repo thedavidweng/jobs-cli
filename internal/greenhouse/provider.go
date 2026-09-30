@@ -30,10 +30,16 @@ const (
 
 type Provider struct {
 	Client *http.Client
+	Board  string
+	APIKey string
 }
 
 func NewProvider(client *http.Client) domain.ApplyProvider {
 	return &Provider{Client: client}
+}
+
+func NewAuthorizedProvider(client *http.Client, board, key string) domain.ApplyProvider {
+	return &Provider{Client: client, Board: board, APIKey: key}
 }
 
 type BoardJob struct {
@@ -45,7 +51,7 @@ type BoardJob struct {
 }
 
 func (p *Provider) Capabilities() domain.Capabilities {
-	return domain.Capabilities{Inspect: true, Prepare: true, NativeSubmit: true}
+	return domain.Capabilities{Inspect: true, Prepare: true, NativeSubmit: p.APIKey != "" && p.Board != "", AuthRequired: true}
 }
 
 func (p *Provider) ListBoardJobs(ctx context.Context, token string) ([]BoardJob, error) {
@@ -111,6 +117,9 @@ func (p *Provider) Submit(ctx context.Context, req *domain.SubmitRequest) (*doma
 		return nil, errors.New(errors.InternalError, "greenhouse submit requires a request", errors.CatInternal, false, nil)
 	}
 	token, jobID, err := boardIdentifiers(&req.Target)
+	if p.APIKey == "" || p.Board != token {
+		return nil, errors.New(errors.AuthRequired, "Greenhouse submission requires an employer Job Board API key scoped to board "+token, errors.CatAuth, false, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +144,7 @@ func (p *Provider) Submit(ctx context.Context, req *domain.SubmitRequest) (*doma
 	if err != nil {
 		return nil, errors.New(errors.InternalError, "build greenhouse submission request: "+err.Error(), errors.CatInternal, false, err)
 	}
+	httpReq.SetBasicAuth(p.APIKey, "")
 	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("User-Agent", userAgent)
@@ -144,7 +154,7 @@ func (p *Provider) Submit(ctx context.Context, req *domain.SubmitRequest) (*doma
 	if err != nil {
 		return nil, errors.New(errors.NetworkUnreachable,
 			"greenhouse submission failed in transit and was not retried; the application may or may not have been received",
-			errors.CatNetwork, true, err)
+			errors.CatNetwork, false, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -214,7 +224,7 @@ func writeApplication(writer *multipart.Writer, app *domain.ApplicationArtifact,
 		if !acceptsResume {
 			return errors.New(errors.ApplicationIncomplete, "this application does not accept a resume", errors.CatValidation, false, nil)
 		}
-		if err := writeFilePart(writer, "resume", resume); err != nil {
+		if err := writeFilePart(writer, "resume", &resume); err != nil {
 			return err
 		}
 	}
@@ -223,7 +233,7 @@ func writeApplication(writer *multipart.Writer, app *domain.ApplicationArtifact,
 		if !acceptsCover {
 			return errors.New(errors.ApplicationIncomplete, "this application does not accept a cover letter", errors.CatValidation, false, nil)
 		}
-		if err := writeFilePart(writer, "cover_letter", cover); err != nil {
+		if err := writeFilePart(writer, "cover_letter", &cover); err != nil {
 			return err
 		}
 	}
@@ -237,7 +247,7 @@ func writeApplication(writer *multipart.Writer, app *domain.ApplicationArtifact,
 		}
 		if strings.EqualFold(question.Type, "input_file") {
 			file := domain.Attachment{Kind: question.ID, Path: value, Filename: filepath.Base(value)}
-			if err := writeFilePart(writer, question.ID, file); err != nil {
+			if err := writeFilePart(writer, question.ID, &file); err != nil {
 				return err
 			}
 			continue
@@ -249,7 +259,7 @@ func writeApplication(writer *multipart.Writer, app *domain.ApplicationArtifact,
 	return nil
 }
 
-func writeFilePart(writer *multipart.Writer, name string, attachment domain.Attachment) error {
+func writeFilePart(writer *multipart.Writer, name string, attachment *domain.Attachment) error {
 	data, err := os.ReadFile(attachment.Path)
 	if err != nil {
 		return errors.New(errors.ApplicationIncomplete, fmt.Sprintf("%s file %s is not readable", name, attachment.Path), errors.CatValidation, false, err)

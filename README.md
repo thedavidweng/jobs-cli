@@ -19,8 +19,8 @@
 - Safety-first: `--read-only`, `--dry-run`, and `--confirm` gates, so no application is sent without `--confirm`
 - Search without logging in: Indeed and LinkedIn in one command, and if one source fails, the other still returns results
 - Finds where to apply: Greenhouse, Lever, Ashby, Workday, SmartRecruiters, iCIMS, or the employer's own site
-- Applies from the terminal: inspect the form, prepare an application you can review, then submit it (Greenhouse today)
-- Single binary: no runtime, containers, or sidecar service required
+- Applies from the terminal: inspect the form, prepare an application you can review, fill Workday in an explicitly connected browser, stop at review, then confirm submission; Greenhouse API submission requires an employer key
+- Single binary for discovery and API operations; Workday requires a running Chrome-compatible browser with an explicit local CDP connection
 
 ## Why
 

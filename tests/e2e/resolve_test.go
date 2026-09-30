@@ -36,7 +36,7 @@ func TestResolveJSONReturnsApplicationTargetOnly(t *testing.T) {
 	}
 	for _, flag := range []string{"inspect", "prepare", "native_submit"} {
 		if capabilities[flag] != true {
-			t.Errorf("capabilities.%s = %v, want true", flag, capabilities[flag])
+			t.Errorf("capabilities.%s = %v, want false", flag, capabilities[flag])
 		}
 	}
 	if capabilities["browser_required"] != false {

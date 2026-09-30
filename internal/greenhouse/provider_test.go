@@ -79,7 +79,7 @@ func TestInspectNormalizesQuestionSchema(t *testing.T) {
 		got = req
 		return jsonResponse(http.StatusOK, jobSchema), nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 
 	inspection, err := provider.Inspect(context.Background(), &domain.InspectRequest{Target: greenhouseTarget()})
 	if err != nil {
@@ -143,7 +143,7 @@ func TestInspectDerivesIdentifiersFromEmbedURL(t *testing.T) {
 	client := newClient(func(*http.Request) (*http.Response, error) {
 		return jsonResponse(http.StatusOK, jobSchema), nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 	target := domain.ApplicationTarget{
 		URL:      "https://acme.example.com/careers?gh_jid=8556658002&for=acme",
 		Provider: domain.ProviderGreenhouse,
@@ -175,7 +175,7 @@ func TestInspectSurfacesSchemaDrift(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader("<html>blocked</html>")),
 		}, nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 	_, err := provider.Inspect(context.Background(), &domain.InspectRequest{Target: greenhouseTarget()})
 	requireCode(t, err, "API_SCHEMA_CHANGED")
 }
@@ -186,7 +186,7 @@ func TestListBoardJobsPinsRequestAndParsesJobs(t *testing.T) {
 		got = req
 		return jsonResponse(http.StatusOK, `{"jobs":[{"id":8556658002,"title":"Backend Engineer","location":{"name":"Remote"},"updated_at":"2026-09-01T00:00:00-04:00","absolute_url":"https://boards.greenhouse.io/acme/jobs/8556658002"}]}`), nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 	jobs, err := provider.ListBoardJobs(context.Background(), boardToken)
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -235,7 +235,7 @@ func submitFixture(t *testing.T, schema, answerPath string) *capturedSubmission 
 		}
 		return jsonResponse(http.StatusOK, schema), nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 	prepared := domain.ApplicationArtifact{
 		JobID:       "indeed:1",
 		Provider:    domain.ProviderGreenhouse,
@@ -403,7 +403,7 @@ func TestSubmitRemoteValidationFailure(t *testing.T) {
 		}
 		return jsonResponse(http.StatusOK, jobSchema), nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 	prepared := domain.ApplicationArtifact{
 		Provider:    domain.ProviderGreenhouse,
 		Application: greenhouseTarget(),
@@ -439,7 +439,7 @@ func TestSubmitTransportFailureIsNotRetried(t *testing.T) {
 		}
 		return jsonResponse(http.StatusOK, jobSchema), nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 	prepared := domain.ApplicationArtifact{
 		Provider:    domain.ProviderGreenhouse,
 		Application: greenhouseTarget(),
@@ -472,7 +472,7 @@ func TestSubmitRejectsUnacceptedCoverLetterBeforePost(t *testing.T) {
 			`{"label": "Cover Letter", "required": false, "fields": [{"name": "cover_letter", "type": "input_file", "values": []}]},`,
 			"", 1)), nil
 	})
-	provider := &greenhouse.Provider{Client: client}
+	provider := &greenhouse.Provider{Client: client, Board: "acme", APIKey: "fixture-key"}
 	prepared := domain.ApplicationArtifact{
 		Provider:    domain.ProviderGreenhouse,
 		Application: greenhouseTarget(),

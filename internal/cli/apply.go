@@ -20,6 +20,12 @@ inspect and prepare take a compound Job ID and resolve the Application Target as
 needed. submit consumes a versioned Application Artifact produced by prepare, and
 never guesses a Job ID on its own.`,
 	}
+	cmd.PersistentFlags().StringVar(&a.browserEndpoint, "browser-endpoint", "", "explicit local Chrome CDP endpoint")
+	cmd.PersistentFlags().StringVar(&a.browserTab, "browser-tab", "", "existing browser tab ID for this Job")
+	cmd.PersistentFlags().StringVar(&a.browserState, "state", "", "browser workflow state file (required for fill and submit)")
+	cmd.PersistentFlags().StringVar(&a.greenhouseKeyFile, "greenhouse-key-file", "", "employer Job Board API key file")
+	cmd.PersistentFlags().StringVar(&a.greenhouseBoard, "greenhouse-board", "", "board authorized by the provided API key")
+	cmd.AddCommand(applyFillCmd(a))
 	cmd.AddCommand(applyInspectCmd(a))
 	cmd.AddCommand(applyPrepareCmd(a))
 	cmd.AddCommand(applySubmitCmd(a))

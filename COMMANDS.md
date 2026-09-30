@@ -262,3 +262,11 @@ Remote application submission is a mutation:
 | 10 | confirmation required |
 
 See `JSON_SCHEMA.md` for the machine-readable error codes and envelopes.
+
+## JSON Resume and Workday execution
+
+`apply prepare --resume-json <file>` accepts JSON Resume v1.0.0, preserves the raw document, and uses manifest candidate keys as explicit overrides. `--resume` remains an upload document, and `--cover-letter` remains optional. Names are not split and date precision is not invented. Same-kind CLI document flags override manifest attachment paths.
+
+Workday inspect/prepare/fill/submit share `--browser-endpoint <local-CDP-URL>` and `--browser-tab <existing-tab-ID>`. `apply fill --artifact <file> --state <file> --confirm` performs intentional writes and stops at review; `apply submit` uses the same state and requires another confirmation. Both obey read-only/dry-run gates. New wizard requirements pause; use `apply prepare <job-id> --previous-artifact <file>` with the same explicit inputs to review the next step. See [browser workflow and test prerequisites](docs/browser-testing.md).
+
+Greenhouse public inspect/prepare need no key. Documented API submit requires `--greenhouse-key-file <file> --greenhouse-board <board>` containing an employer-authorized Job Board API key. Indeed-hosted prepare produces local, unvalidated official handoff material; jobs-cli does not automate Indeed forms.

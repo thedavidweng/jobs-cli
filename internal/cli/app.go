@@ -44,15 +44,20 @@ type App struct {
 	errOut io.Writer
 	in     io.Reader
 
-	configPath string
-	jsonMode   bool
-	pretty     bool
-	full       bool
-	readOnly   bool
-	dryRun     bool
-	confirm    bool
-	timeout    time.Duration
-	profile    string
+	browserEndpoint   string
+	browserTab        string
+	browserState      string
+	greenhouseKeyFile string
+	greenhouseBoard   string
+	configPath        string
+	jsonMode          bool
+	pretty            bool
+	full              bool
+	readOnly          bool
+	dryRun            bool
+	confirm           bool
+	timeout           time.Duration
+	profile           string
 
 	requestID string
 	command   string

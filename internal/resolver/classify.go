@@ -198,8 +198,8 @@ func looksLikeApplicationURL(u *url.URL) bool {
 
 func postureFor(provider domain.ApplicationProvider) domain.VerificationPosture {
 	switch provider {
-	case domain.ProviderGreenhouse:
-		return domain.VerifiedWorking
+	case domain.ProviderGreenhouse, domain.ProviderWorkday:
+		return domain.PartiallyVerified
 	case domain.ProviderLinkedIn:
 		return domain.VerifiedSourceImpl
 	default:

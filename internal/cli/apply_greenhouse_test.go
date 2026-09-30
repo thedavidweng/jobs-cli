@@ -50,6 +50,10 @@ func (s *ghStub) handle(req *http.Request) (*http.Response, error) {
 		s.gets++
 		return testutil.JSONResponse(http.StatusOK, s.schema), nil
 	case http.MethodPost:
+		user, password, ok := req.BasicAuth()
+		if !ok || user != "fixture-key" || password != "" {
+			return testutil.JSONResponse(http.StatusUnauthorized, `{"error":"key required"}`), nil
+		}
 		s.posts++
 		s.postURL = req.URL.String()
 		s.postType = req.Header.Get("Content-Type")
@@ -85,7 +89,7 @@ func useGreenhouseStub(h *harness, stub *ghStub) *harness {
 		return testutil.NewRegistry(
 			map[domain.Source]domain.SourceAdapter{domain.SourceIndeed: &testutil.FakeSource{SourceName: domain.SourceIndeed, Job: fakeJob(domain.SourceIndeed, "1")}},
 			&testutil.FakeResolver{Target: ghTarget()},
-			map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderGreenhouse: greenhouse.NewProvider(client)},
+			map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderGreenhouse: greenhouse.NewAuthorizedProvider(client, "acme", "fixture-key")},
 		)
 	}
 	return h

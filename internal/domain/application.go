@@ -39,6 +39,8 @@ const (
 type Capabilities struct {
 	Inspect         bool `json:"inspect"`
 	Prepare         bool `json:"prepare"`
+	BrowserFill     bool `json:"browser_fill"`
+	BrowserSubmit   bool `json:"browser_submit"`
 	NativeSubmit    bool `json:"native_submit"`
 	BrowserRequired bool `json:"browser_required"`
 	AuthRequired    bool `json:"auth_required"`
@@ -78,6 +80,9 @@ type ApplicationField struct {
 }
 
 type ApplicationInspection struct {
+	Step               string                `json:"step,omitempty"`
+	PendingAction      string                `json:"pending_action,omitempty"`
+	Sections           []ApplicationSection  `json:"sections,omitempty"`
 	Provider           ApplicationProvider   `json:"provider"`
 	Application        ApplicationTarget     `json:"application"`
 	Fingerprint        string                `json:"fingerprint"`
@@ -95,4 +100,10 @@ type SubmissionResult struct {
 	Status          string              `json:"status,omitempty"`
 	ConfirmationURL string              `json:"confirmation_url,omitempty"`
 	Receipt         map[string]any      `json:"receipt,omitempty"`
+}
+
+type ApplicationSection struct {
+	Name   string                `json:"name"`
+	Rows   []map[string]string   `json:"rows,omitempty"`
+	Fields []ApplicationQuestion `json:"fields,omitempty"`
 }

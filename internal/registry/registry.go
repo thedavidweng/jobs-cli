@@ -56,7 +56,7 @@ func New(client *http.Client, cfg *config.Config) *Registry {
 	r.Providers[domain.ProviderWorkday] = workday.NewProvider()
 	r.Providers[domain.ProviderSmartRecruiters] = smartrecruiters.NewProvider()
 	r.Providers[domain.ProviderICIMS] = icims.NewProvider(client)
-	for _, name := range []domain.ApplicationProvider{domain.ProviderYZi, domain.ProviderPeopleSoft, domain.ProviderExternal} {
+	for _, name := range []domain.ApplicationProvider{domain.ProviderIndeed, domain.ProviderYZi, domain.ProviderPeopleSoft, domain.ProviderExternal} {
 		r.Providers[name] = browserapply.Provider{Name: name}
 	}
 	r.LinkedInAuth = session.New(sessions, cookieimport.New())

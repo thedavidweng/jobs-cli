@@ -57,7 +57,7 @@ Core functionality will include:
 - ATS/application-provider resolution;
 - Greenhouse structured application inspection and native submission;
 - LinkedIn Easy Apply form inspection; native submission only after live authenticated verification;
-- browser-required application targets for Lever, Ashby, Workday, and SmartRecruiters;
+- browser-required handoff for Lever, Ashby and SmartRecruiters, and explicit Workday browser execution;
 - explicit browser-required results for providers whose public candidate submission cannot be completed natively;
 - stable JSON envelopes and exit codes for Agent use;
 - human-readable output by default;
@@ -475,7 +475,7 @@ The resolver must not become a general browser.
 
 ### 15. Greenhouse native application support
 
-Greenhouse is the first fully native end-to-end application provider.
+Greenhouse provides public inspection and preparation, and an employer-authorized API submission path.
 
 The implementation must support:
 
@@ -490,7 +490,7 @@ The implementation must support:
 - dry-run representation;
 - explicit confirmed submission.
 
-Greenhouse native application submission requires no candidate authentication on the verified public Board API surface.
+Greenhouse POST requires Basic Auth with an employer Job Board API key. Public GET does not authorize anonymous POST. Supply --greenhouse-key-file and --greenhouse-board; the key is never placed in the Application Artifact.
 
 ### 16. Application lifecycle
 
@@ -546,9 +546,9 @@ Resolved Ashby applications expose a usable application URL and `browser_require
 
 ### 20. Workday
 
-Candidate account creation, verification, authentication, session state, and multi-step application wizard remain browser responsibilities.
+Workday wizard execution uses an explicit local CDP endpoint and existing Job tab. inspect/prepare are read-only; fill is a confirmed mutation and stops at review. Users handle account creation, login, email verification, MFA, CAPTCHA and assessments. New or changed step requirements require renewed preparation with --previous-artifact; submit verifies workflow state and review values before one confirmed click.
 
-Resolved Workday applications expose a usable application URL and `browser_required`.
+Resolved Workday applications expose browser_fill and browser_submit separately from native_submit. Runtime behavior is verified against two local employer fixtures; production authenticated submission is unverified. Unsupported controls return a pending action. See ADR-0022 and docs/browser-testing.md.
 
 ### 21. SmartRecruiters
 

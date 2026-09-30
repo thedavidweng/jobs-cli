@@ -33,7 +33,7 @@ func (a *App) runApplyInspect(cmd *cobra.Command, f *applyInspectFlags, jobID st
 	if err != nil {
 		return err
 	}
-	provider, perr := a.registry().Provider(target.Provider)
+	provider, perr := a.applyProvider(target.Provider)
 	if perr != nil {
 		return perr
 	}

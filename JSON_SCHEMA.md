@@ -265,3 +265,13 @@ Shared family codes also in use: `INVALID_ARGUMENTS` (2),
 
 `API_SCHEMA_CHANGED` is used whenever a provider response no longer matches the
 verified shape — drift is never silently normalized.
+
+## Application workflow additions (2026-09-30)
+
+Artifact v2 adds full_name, address, repeated work/education/skills/languages/certificates, raw resume_json, requirements_validated, pending_action, browser_steps, and attachment sha256 content digests. Resume entry keys keep JSON Resume spelling (startDate, studyType, etc.). Version 1 native artifacts remain readable; unknown versions fail validation.
+
+Capabilities distinguish browser_fill/browser_submit from native_submit. Workday exposes browser execution with an explicit local CDP connection; its production submission remains unverified. Greenhouse's default capability is public inspection/preparation with auth_required; native_submit requires runtime board-scoped employer credentials.
+
+Workday results always include submitted and status. Pending statuses include start_application_required, start_uncertain, login_required, verification_required, user_action_required, missing_answers, unsupported_step, requirements_changed, review_required, review_ready and submission_uncertain. requirements_changed includes the current inspection under receipt.inspection. submitted is true only after positive confirmation evidence; receipt.tasks is separate from submission success. Review and mutation state live in the separately supplied --state file, without browser credentials.
+
+Indeed-hosted artifacts carry requirements_validated=false and pending_action=official_handoff. They represent locally prepared inputs, not validated Indeed form answers or permission to automate submission.

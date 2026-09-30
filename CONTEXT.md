@@ -30,11 +30,11 @@ The validated, reviewable payload produced by `apply prepare` and consumed by `a
 _Avoid_: Draft application (ambiguous), form state, cached answers
 
 **Capability**:
-A machine-readable flag on an Application Target describing what the CLI can do natively (inspect, prepare, submit) versus what requires a browser.
+A machine-readable flag on an Application Target describing what the CLI can do natively (inspect, prepare, submit) versus what requires a browser. browser_fill and browser_submit describe executable browser behavior separately from native_submit; handoff alone does not imply either capability.
 _Avoid_: Feature flag (reserve for build/runtime gates), support level (prose only)
 
 **Browser Required**:
-A Capability outcome meaning native submission is not available; the CLI returns the application URL for an external browser-capable Agent.
+A Capability outcome meaning a browser runtime is needed. Workday can execute through an explicit local CDP tab; handoff-only providers return the URL for official tooling or an external browser-capable Agent.
 _Avoid_: Unsupported (too vague—prefer explicit capability + error code), scrape fallback
 
 **Search Partition**:
@@ -46,7 +46,7 @@ The country whose Indeed index a search runs in, plus the locale sent with it. E
 _Avoid_: Region, geo (LinkedIn's location URN), site
 
 **Session**:
-The locally stored LinkedIn web authentication material used for Voyager, obtained via guided browser import—not an OAuth access token.
+The locally stored LinkedIn web authentication material used for Voyager, obtained via guided browser import—not an OAuth access token. Workday browser authentication stays in the explicitly connected employer-scoped browser, outside the artifact and workflow state.
 _Avoid_: OAuth token, API key, password
 
 **Error Code**:

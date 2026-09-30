@@ -1,11 +1,13 @@
 package artifact
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
@@ -40,7 +42,7 @@ func Decode(data []byte) (domain.ApplicationArtifact, *joberrors.Error) {
 	if a.ArtifactVersion == 0 && a.JobID == "" {
 		return domain.ApplicationArtifact{}, joberrors.New(joberrors.InvalidArguments, "artifact payload is not an Application Artifact", joberrors.CatValidation, false, nil)
 	}
-	if a.ArtifactVersion != domain.ArtifactVersion {
+	if a.ArtifactVersion != 1 && a.ArtifactVersion != domain.ArtifactVersion {
 		return domain.ApplicationArtifact{}, joberrors.New(joberrors.ValidationFailed,
 			fmt.Sprintf("unsupported artifact_version %d (this build supports %d); run `jobs-cli apply prepare` again", a.ArtifactVersion, domain.ArtifactVersion),
 			joberrors.CatValidation, false, nil)
@@ -165,6 +167,27 @@ func Validate(a *domain.ApplicationArtifact, inspection *domain.ApplicationInspe
 			problems = append(problems, questionLabel(question)+": "+problem)
 		}
 	}
+	sections := map[string][]map[string]any{"work": a.Candidate.Work, "education": a.Candidate.Education, "skills": a.Candidate.Skills, "languages": a.Candidate.Languages, "certificates": a.Candidate.Certificates}
+	for _, section := range inspection.Sections {
+		for index, entry := range sections[section.Name] {
+			for _, field := range section.Fields {
+				value := ""
+				if raw := entry[field.ID]; raw != nil {
+					value = fmt.Sprint(raw)
+				}
+				label := fmt.Sprintf("%s[%d] %s", section.Name, index, field.Label)
+				if field.Required && value == "" {
+					problems = append(problems, label)
+					continue
+				}
+				if value != "" {
+					if problem := validateAnswer(&field, value); problem != "" {
+						problems = append(problems, label+": "+problem)
+					}
+				}
+			}
+		}
+	}
 	problems = append(problems, validateAttachments(a, inspection)...)
 	if len(problems) > 0 {
 		return joberrors.New(joberrors.ApplicationIncomplete,
@@ -175,6 +198,7 @@ func Validate(a *domain.ApplicationArtifact, inspection *domain.ApplicationInspe
 }
 
 var supportedQuestionTypes = map[string]bool{
+	"date": true, "month": true,
 	"input_text":                true,
 	"textarea":                  true,
 	"long_text":                 true,
@@ -190,6 +214,15 @@ var supportedQuestionTypes = map[string]bool{
 
 func validateAnswer(question *domain.ApplicationQuestion, value string) string {
 	questionType := strings.ToLower(strings.TrimSpace(question.Type))
+	if questionType == "date" || questionType == "month" {
+		layout := "2006-01-02"
+		if questionType == "month" {
+			layout = "2006-01"
+		}
+		if _, err := time.Parse(layout, value); err != nil {
+			return "explicit " + layout + " date required; missing precision is not inferred"
+		}
+	}
 	if questionType == "input_file" {
 		if _, err := os.Stat(value); err != nil {
 			return "file " + value + " is not readable"
@@ -242,6 +275,13 @@ func validateAttachments(a *domain.ApplicationArtifact, inspection *domain.Appli
 		if _, err := os.Stat(attachment.Path); err != nil {
 			problems = append(problems, fmt.Sprintf("%s file %s", kind, attachment.Path))
 			continue
+		}
+		if attachment.SHA256 != "" {
+			data, err := os.ReadFile(attachment.Path)
+			if err != nil || fmt.Sprintf("%x", sha256.Sum256(data)) != attachment.SHA256 {
+				problems = append(problems, kind+" changed since preparation")
+				continue
+			}
 		}
 		switch strings.ToLower(kind) {
 		case "resume":

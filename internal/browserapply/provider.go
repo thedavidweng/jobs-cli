@@ -11,6 +11,11 @@ type Provider struct{ Name domain.ApplicationProvider }
 
 func (p Provider) Capabilities() domain.Capabilities { return domain.CapabilitiesFor(p.Name) }
 func (p Provider) Inspect(_ context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {
+	if p.Name == domain.ProviderIndeed {
+		target := req.Target
+		target.Capabilities = p.Capabilities()
+		return &domain.ApplicationInspection{Provider: p.Name, Application: target, Capabilities: p.Capabilities(), PendingAction: "official_handoff", Fingerprint: domain.Fingerprint(&target, nil, nil)}, nil
+	}
 	return nil, domain.BrowserRequiredError(string(p.Name), "inspection", req.Target.URL)
 }
 

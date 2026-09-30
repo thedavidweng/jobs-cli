@@ -41,7 +41,7 @@ func (a *App) runApplySubmit(cmd *cobra.Command, f *applySubmitFlags) error {
 	if aerr != nil {
 		return aerr
 	}
-	provider, perr := a.registry().Provider(prepared.Provider)
+	provider, perr := a.applyProvider(prepared.Provider)
 	if perr != nil {
 		return perr
 	}
@@ -58,7 +58,7 @@ func (a *App) runApplySubmit(cmd *cobra.Command, f *applySubmitFlags) error {
 	}
 
 	caps := provider.Capabilities()
-	if !caps.NativeSubmit {
+	if !caps.NativeSubmit && !caps.BrowserSubmit {
 		plan := submitPlan(&prepared, "")
 		if a.dryRun {
 			if a.jsonMode {
@@ -85,14 +85,15 @@ func (a *App) runApplySubmit(cmd *cobra.Command, f *applySubmitFlags) error {
 		return nil
 	}
 
-	if staleErr := artifact.Stale(&prepared, inspection); staleErr != nil {
-		return staleErr
-	}
+	if !caps.BrowserSubmit {
+		if staleErr := artifact.Stale(&prepared, inspection); staleErr != nil {
+			return staleErr
+		}
 
-	if verr := artifact.Validate(&prepared, inspection); verr != nil {
-		return verr
+		if verr := artifact.Validate(&prepared, inspection); verr != nil {
+			return verr
+		}
 	}
-
 	if gateErr := a.gate().Check(safety.TierMutation); gateErr != nil {
 		return gateErr
 	}
@@ -102,7 +103,7 @@ func (a *App) runApplySubmit(cmd *cobra.Command, f *applySubmitFlags) error {
 		return joberrors.From(serr)
 	}
 	if !a.jsonMode {
-		fmt.Fprintf(a.out, "submitted application for %s via %s\n", prepared.JobID, prepared.Provider)
+		fmt.Fprintf(a.out, "application for %s via %s: %s (submitted=%t)\n", prepared.JobID, prepared.Provider, submitted.Status, submitted.Submitted)
 	}
 	return a.emit(result{Data: submitted})
 }
@@ -152,6 +153,8 @@ func submitPlan(prepared *domain.ApplicationArtifact, remoteFingerprint string) 
 
 func unsupportedSubmitError(prepared *domain.ApplicationArtifact, caps domain.Capabilities) *joberrors.Error {
 	switch {
+	case prepared.Provider == domain.ProviderGreenhouse:
+		return joberrors.New(joberrors.AuthRequired, "Greenhouse POST requires --greenhouse-key-file and --greenhouse-board", joberrors.CatAuth, false, nil)
 	case prepared.Provider == domain.ProviderLinkedIn:
 		return joberrors.New(joberrors.LinkedInEasyApplyUnverified,
 			"Easy Apply submission is disabled until the Voyager implementation is verified with a controlled live session; apply in a browser at "+prepared.Application.URL,
