@@ -23,6 +23,10 @@ func classify(u *url.URL) classification {
 	host := strings.ToLower(u.Hostname())
 	segments := pathSegments(u.Path)
 	switch {
+	case host == "talent.yzilabs.com" && len(segments) == 2 && segments[0] == "jobs":
+		return classification{provider: domain.ProviderYZi, providerJobID: segments[1]}
+	case (strings.HasPrefix(u.Path, "/psc/") || strings.HasPrefix(u.Path, "/psp/")) && strings.Contains(u.Path, "HRS_HRAM_FL.HRS_CG_SEARCH_FL"):
+		return classification{provider: domain.ProviderPeopleSoft, providerJobID: u.Query().Get("JobOpeningId"), site: u.Query().Get("SiteId")}
 	case hostMatches(host, "greenhouse.io"):
 		return classifyGreenhouse(u, segments)
 	case hostMatches(host, "lever.co"):
@@ -194,8 +198,8 @@ func looksLikeApplicationURL(u *url.URL) bool {
 
 func postureFor(provider domain.ApplicationProvider) domain.VerificationPosture {
 	switch provider {
-	case domain.ProviderGreenhouse:
-		return domain.VerifiedWorking
+	case domain.ProviderGreenhouse, domain.ProviderWorkday:
+		return domain.PartiallyVerified
 	case domain.ProviderLinkedIn:
 		return domain.VerifiedSourceImpl
 	default:

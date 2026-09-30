@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,23 +15,28 @@ import (
 	"github.com/thedavidweng/jobs-cli/v2/internal/artifact"
 	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
+	"github.com/thedavidweng/jobs-cli/v2/internal/resumejson"
 )
 
 type applyPrepareFlags struct {
-	authenticated bool
-	answersFile   string
-	manifestFile  string
-	resume        string
-	coverLetter   string
-	out           string
+	authenticated    bool
+	answersFile      string
+	manifestFile     string
+	resumeJSON       string
+	resume           string
+	coverLetter      string
+	previousArtifact string
+	out              string
 }
 
 type prepareInput struct {
-	Candidate   domain.Candidate           `json:"candidate"`
-	Answers     []domain.ApplicationAnswer `json:"answers"`
-	Attachments []domain.Attachment        `json:"attachments"`
-	Resume      string                     `json:"resume"`
-	CoverLetter string                     `json:"cover_letter"`
+	candidateKeys map[string]json.RawMessage
+	ResumeJSON    json.RawMessage            `json:"-"`
+	Candidate     domain.Candidate           `json:"candidate"`
+	Answers       []domain.ApplicationAnswer `json:"answers"`
+	Attachments   []domain.Attachment        `json:"attachments"`
+	Resume        string                     `json:"resume"`
+	CoverLetter   string                     `json:"cover_letter"`
 }
 
 func applyPrepareCmd(a *App) *cobra.Command {
@@ -50,8 +57,10 @@ is required: the CLI never chooses a default artifact path.`,
 	cmd.Flags().BoolVar(&f.authenticated, "authenticated", false, "use authenticated LinkedIn (Voyager) instead of Guest")
 	cmd.Flags().StringVar(&f.answersFile, "answers", "", "answers JSON file (- for stdin)")
 	cmd.Flags().StringVar(&f.manifestFile, "manifest", "", "manifest JSON file embedding candidate, answers, and attachment paths (- for stdin)")
+	cmd.Flags().StringVar(&f.resumeJSON, "resume-json", "", "JSON Resume v1.0.0 input file")
 	cmd.Flags().StringVar(&f.resume, "resume", "", "resume file path")
 	cmd.Flags().StringVar(&f.coverLetter, "cover-letter", "", "cover letter file path")
+	cmd.Flags().StringVar(&f.previousArtifact, "previous-artifact", "", "previous Workday artifact to retain reviewed steps when preparing the next step")
 	cmd.Flags().StringVar(&f.out, "out", "", "write the Application Artifact to this path")
 	return cmd
 }
@@ -62,7 +71,7 @@ func (a *App) runApplyPrepare(cmd *cobra.Command, f *applyPrepareFlags, jobID st
 	if err != nil {
 		return err
 	}
-	provider, perr := a.registry().Provider(target.Provider)
+	provider, perr := a.applyProvider(target.Provider)
 	if perr != nil {
 		return perr
 	}
@@ -81,24 +90,58 @@ func (a *App) runApplyPrepare(cmd *cobra.Command, f *applyPrepareFlags, jobID st
 	}
 
 	prepared := domain.ApplicationArtifact{
-		SchemaVersion:   domain.ArtifactSchemaVersion,
-		ArtifactVersion: domain.ArtifactVersion,
-		GeneratedAt:     time.Now().UTC().Format(time.RFC3339),
-		JobID:           job.ID,
-		JobTitle:        job.Title,
-		Employer:        job.Employer,
-		Provider:        target.Provider,
-		Application:     target,
-		Fingerprint:     inspection.Fingerprint,
-		Candidate:       input.Candidate,
-		Answers:         input.Answers,
-		Attachments:     attachments,
+		PendingAction: inspection.PendingAction, RequirementsValidated: inspection.PendingAction == "",
+		SchemaVersion:      domain.ArtifactSchemaVersion,
+		ArtifactVersion:    domain.ArtifactVersion,
+		GeneratedAt:        time.Now().UTC().Format(time.RFC3339),
+		JobID:              job.ID,
+		JobTitle:           job.Title,
+		Employer:           job.Employer,
+		Provider:           target.Provider,
+		Application:        target,
+		Fingerprint:        inspection.Fingerprint,
+		ResumeJSON:         input.ResumeJSON,
+		CandidateOverrides: input.candidateKeys,
+		Candidate:          input.Candidate,
+		Answers:            input.Answers,
+		Attachments:        attachments,
 	}
 
-	if verr := artifact.Validate(&prepared, inspection); verr != nil {
-		return verr
+	if target.Provider == domain.ProviderWorkday {
+		if f.previousArtifact != "" {
+			previous, err := a.loadArtifact(f.previousArtifact)
+			if err != nil {
+				return err
+			}
+			if previous.Application.URL != target.URL {
+				return invalid("previous artifact belongs to another Job")
+			}
+			prepared.BrowserSteps = previous.BrowserSteps
+		}
+		var steps []domain.ApplicationInspection
+		for index := range prepared.BrowserSteps {
+			step := &prepared.BrowserSteps[index]
+			if step.Step != inspection.Step {
+				steps = append(steps, *step)
+			}
+		}
+		steps = append(steps, *inspection)
+		prepared.BrowserSteps = steps
+	}
+	if inspection.PendingAction == "" {
+		validationInspection := *inspection
+		if target.Provider == domain.ProviderWorkday {
+			validationInspection.AcceptsResume = true
+			validationInspection.AcceptsCoverLetter = true
+		}
+		if verr := artifact.Validate(&prepared, &validationInspection); verr != nil {
+			return verr
+		}
 	}
 	warnings := artifact.Warnings(&prepared, inspection)
+	if inspection.PendingAction != "" {
+		warnings = append(warnings, "application requirements are unvalidated: "+inspection.PendingAction)
+	}
 
 	if f.out != "" {
 		if werr := artifact.WriteFile(f.out, &prepared); werr != nil {
@@ -120,6 +163,17 @@ func (a *App) runApplyPrepare(cmd *cobra.Command, f *applyPrepareFlags, jobID st
 
 func (a *App) prepareInputs(f *applyPrepareFlags) (prepareInput, *joberrors.Error) {
 	input := prepareInput{}
+	if f.resumeJSON != "" {
+		data, err := a.readInput(f.resumeJSON)
+		if err != nil {
+			return input, err
+		}
+		candidate, err := resumejson.Parse(data)
+		if err != nil {
+			return input, err
+		}
+		input.Candidate, input.ResumeJSON = candidate, data
+	}
 	if f.answersFile != "" {
 		data, rerr := a.readInput(f.answersFile)
 		if rerr != nil {
@@ -129,7 +183,7 @@ func (a *App) prepareInputs(f *applyPrepareFlags) (prepareInput, *joberrors.Erro
 		if perr != nil {
 			return prepareInput{}, perr
 		}
-		input = parsed
+		mergePrepareInput(&input, &parsed)
 	}
 	if f.manifestFile != "" {
 		data, rerr := a.readInput(f.manifestFile)
@@ -142,7 +196,7 @@ func (a *App) prepareInputs(f *applyPrepareFlags) (prepareInput, *joberrors.Erro
 		}
 		mergePrepareInput(&input, &parsed)
 	}
-	if f.answersFile == "" && f.manifestFile == "" && f.resume == "" && f.coverLetter == "" {
+	if f.resumeJSON == "" && f.answersFile == "" && f.manifestFile == "" && f.resume == "" && f.coverLetter == "" {
 		return prepareInput{}, invalid("provide candidate input via --manifest, --answers, --resume, or --cover-letter")
 	}
 	return input, nil
@@ -164,6 +218,15 @@ func parsePrepareInput(data []byte, flag string) (prepareInput, *joberrors.Error
 	if err := json.Unmarshal(data, &input); err != nil {
 		return prepareInput{}, invalid(flag + " is not valid JSON: " + err.Error())
 	}
+	var raw struct {
+		Candidate  map[string]json.RawMessage `json:"candidate"`
+		ResumeJSON json.RawMessage            `json:"resume_json"`
+	}
+	_ = json.Unmarshal(data, &raw)
+	if len(raw.ResumeJSON) > 0 {
+		return prepareInput{}, invalid(flag + " does not support embedded resume_json; use --resume-json <path>")
+	}
+	input.candidateKeys = raw.Candidate
 	if len(input.Answers) == 0 {
 		asMap := map[string]any{}
 		if err := json.Unmarshal(data, &asMap); err == nil {
@@ -189,9 +252,26 @@ func hasAttachmentKeys(raw map[string]any) bool {
 }
 
 func mergePrepareInput(base, override *prepareInput) {
-	if override.Candidate != (domain.Candidate{}) {
-		base.Candidate = override.Candidate
+	// Merge explicit candidate keys, including intentionally empty values.
+	baseData, _ := json.Marshal(base.Candidate)
+	overrideData, _ := json.Marshal(override.Candidate)
+	values := map[string]json.RawMessage{}
+	_ = json.Unmarshal(baseData, &values)
+	overrides := override.candidateKeys
+	if overrides == nil {
+		_ = json.Unmarshal(overrideData, &overrides)
 	}
+	if base.candidateKeys == nil {
+		base.candidateKeys = map[string]json.RawMessage{}
+	}
+	for key, value := range overrides {
+		values[key] = value
+		base.candidateKeys[key] = value
+	}
+	merged, _ := json.Marshal(values)
+	var candidate domain.Candidate
+	_ = json.Unmarshal(merged, &candidate)
+	base.Candidate = candidate
 	if len(override.Answers) > 0 {
 		base.Answers = override.Answers
 	}
@@ -207,17 +287,40 @@ func mergePrepareInput(base, override *prepareInput) {
 }
 
 func collectAttachments(input *prepareInput, f *applyPrepareFlags) ([]domain.Attachment, *joberrors.Error) {
-	attachments := append([]domain.Attachment{}, input.Attachments...)
+	attachments := make([]domain.Attachment, 0, len(input.Attachments))
+	kinds := map[string]bool{}
+	for _, item := range input.Attachments {
+		if kinds[item.Kind] {
+			return nil, invalid("ambiguous attachments for kind " + item.Kind)
+		}
+		kinds[item.Kind] = true
+		normalized, err := attachmentFromFile(item.Kind, item.Path)
+		if err != nil {
+			return nil, err
+		}
+		attachments = append(attachments, normalized)
+	}
 	sources := []struct {
 		kind string
 		path string
 	}{
 		{"resume", input.Resume},
 		{"cover_letter", input.CoverLetter},
-		{"resume", f.resume},
-		{"cover_letter", f.coverLetter},
 	}
 	for _, source := range sources {
+		if source.path == "" {
+			continue
+		}
+		if kinds[source.kind] {
+			return nil, invalid("ambiguous attachments for kind " + source.kind)
+		}
+		attachment, err := attachmentFromFile(source.kind, source.path)
+		if err != nil {
+			return nil, err
+		}
+		attachments = append(attachments, attachment)
+	}
+	for _, source := range []struct{ kind, path string }{{"resume", f.resume}, {"cover_letter", f.coverLetter}} {
 		if source.path == "" {
 			continue
 		}
@@ -235,7 +338,12 @@ func attachmentFromFile(kind, path string) (domain.Attachment, *joberrors.Error)
 	if err != nil {
 		return domain.Attachment{}, joberrors.New(joberrors.ApplicationIncomplete, fmt.Sprintf("%s file %s is not readable", kind, path), joberrors.CatValidation, false, err)
 	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return domain.Attachment{}, invalid("read attachment: " + err.Error())
+	}
 	return domain.Attachment{
+		SHA256:      fmt.Sprintf("%x", sha256.Sum256(data)),
 		Kind:        kind,
 		Path:        path,
 		Filename:    filepath.Base(path),
@@ -247,13 +355,15 @@ func attachmentFromFile(kind, path string) (domain.Attachment, *joberrors.Error)
 func dedupeAttachments(attachments []domain.Attachment) []domain.Attachment {
 	seen := map[string]bool{}
 	out := make([]domain.Attachment, 0, len(attachments))
-	for _, attachment := range attachments {
-		key := attachment.Kind + "|" + attachment.Path
+	for i := len(attachments) - 1; i >= 0; i-- {
+		attachment := attachments[i]
+		key := attachment.Kind
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
 		out = append(out, attachment)
 	}
+	slices.Reverse(out)
 	return out
 }

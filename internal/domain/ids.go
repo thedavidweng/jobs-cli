@@ -8,13 +8,16 @@ import (
 type Source string
 
 const (
-	SourceIndeed   Source = "indeed"
-	SourceLinkedIn Source = "linkedin"
+	SourceIndeed    Source = "indeed"
+	SourceLinkedIn  Source = "linkedin"
+	SourceYZi       Source = "yzi"
+	SourceCivicInfo Source = "civicinfo"
+	SourceTransLink Source = "translink"
 )
 
 func (s Source) Valid() bool {
 	switch s {
-	case SourceIndeed, SourceLinkedIn:
+	case SourceIndeed, SourceLinkedIn, SourceYZi, SourceCivicInfo, SourceTransLink:
 		return true
 	default:
 		return false

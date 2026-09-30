@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/go-%3E%3D1.27-blue?style=flat-square" alt="Go">
 </p>
 
-`jobs-cli` is a single-binary CLI that searches Indeed and LinkedIn, finds the application provider behind each job (Greenhouse, Lever, Workday, and others), and submits your application from the terminal when the provider supports it. When it doesn't, you get the link to apply in a browser.
+`jobs-cli` is a single-binary CLI that searches Indeed, LinkedIn, YZi Talent, CivicInfo BC, and TransLink, finds the application provider behind each job (Greenhouse, Lever, Workday, and others), and submits your application from the terminal when the provider supports it. When it doesn't, you get the link to apply in a browser.
 
 ## Highlights
 
@@ -19,8 +19,8 @@
 - Safety-first: `--read-only`, `--dry-run`, and `--confirm` gates, so no application is sent without `--confirm`
 - Search without logging in: Indeed and LinkedIn in one command, and if one source fails, the other still returns results
 - Finds where to apply: Greenhouse, Lever, Ashby, Workday, SmartRecruiters, iCIMS, or the employer's own site
-- Applies from the terminal: inspect the form, prepare an application you can review, then submit it (Greenhouse today)
-- Single binary: no runtime, containers, or sidecar service required
+- Applies from the terminal: inspect the form, prepare an application you can review, fill Workday in an explicitly connected browser, stop at review, then confirm submission; Greenhouse API submission requires an employer key
+- Single binary for discovery and API operations; Workday requires a running Chrome-compatible browser with an explicit local CDP connection
 
 ## Why
 
@@ -115,6 +115,21 @@ jobs-cli apply submit --artifact artifact.json --confirm
 Indeed searches one country at a time. End `--location` with a US state, Canadian province, or country, pass `--country`, or set a default in the [configuration](COMMANDS.md#configuration). Otherwise the Indeed results fail with `MARKET_REQUIRED`. Add `--json` to any command for machine-readable output.
 
 Indeed discovery requires no login. Indeed-hosted applications resolve with `browser_required=true` and an application URL for you to continue manually in a browser; native submission reports `BROWSER_REQUIRED`. [Indeed's Job Seeker Terms](https://www.indeed.com/legal?co=US&hl=en) prohibit automating Indeed Apply outside its official vendors and tooling. Any proposal to automate this flow must first establish a new architecture decision (ADR) and review the terms; browser extensions, native-messaging hosts, and DOM auto-submit are outside the current product scope.
+
+### Portfolio and BC sources
+
+```shell
+jobs-cli search --source yzi --remote
+jobs-cli search --source civicinfo --query "analyst"
+jobs-cli search --source translink --query "engineer"
+jobs-cli show translink:<id> --resolve
+```
+
+YZi and TransLink discovery have been checked live. CivicInfo's parser is tested,
+but direct requests currently receive Cloudflare HTTP 403. YZi and PeopleSoft
+applications return browser routing; CivicInfo jobs route to employer application
+sites. See the [board reference](COMMANDS.md#portfolio-and-bc-boards) for dates,
+filters, pagination, and verification limits.
 
 ### Uninstall
 

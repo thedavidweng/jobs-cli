@@ -11,7 +11,7 @@ type Provider struct{}
 func NewProvider() domain.ApplyProvider { return &Provider{} }
 
 func (*Provider) Capabilities() domain.Capabilities {
-	return domain.Capabilities{BrowserRequired: true}
+	return domain.CapabilitiesFor(domain.ProviderWorkday)
 }
 
 func (*Provider) Inspect(_ context.Context, req *domain.InspectRequest) (*domain.ApplicationInspection, error) {

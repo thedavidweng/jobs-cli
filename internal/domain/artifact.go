@@ -6,33 +6,45 @@ import (
 	"encoding/json"
 )
 
-const ArtifactSchemaVersion = "2026-09-26"
+const ArtifactSchemaVersion = "2026-09-30"
 
-const ArtifactVersion = 1
+const ArtifactVersion = 2
 
 type ApplicationArtifact struct {
-	SchemaVersion   string              `json:"schema_version"`
-	ArtifactVersion int                 `json:"artifact_version"`
-	GeneratedAt     string              `json:"generated_at"`
-	JobID           string              `json:"job_id"`
-	JobTitle        string              `json:"job_title,omitempty"`
-	Employer        string              `json:"employer,omitempty"`
-	Provider        ApplicationProvider `json:"provider"`
-	Application     ApplicationTarget   `json:"application"`
-	Fingerprint     string              `json:"fingerprint"`
-	Candidate       Candidate           `json:"candidate"`
-	Answers         []ApplicationAnswer `json:"answers,omitempty"`
-	Attachments     []Attachment        `json:"attachments,omitempty"`
+	PendingAction         string                     `json:"pending_action,omitempty"`
+	RequirementsValidated bool                       `json:"requirements_validated"`
+	SchemaVersion         string                     `json:"schema_version"`
+	ArtifactVersion       int                        `json:"artifact_version"`
+	GeneratedAt           string                     `json:"generated_at"`
+	JobID                 string                     `json:"job_id"`
+	JobTitle              string                     `json:"job_title,omitempty"`
+	Employer              string                     `json:"employer,omitempty"`
+	Provider              ApplicationProvider        `json:"provider"`
+	Application           ApplicationTarget          `json:"application"`
+	Fingerprint           string                     `json:"fingerprint"`
+	BrowserSteps          []ApplicationInspection    `json:"browser_steps,omitempty"`
+	ResumeJSON            json.RawMessage            `json:"resume_json,omitempty"`
+	CandidateOverrides    map[string]json.RawMessage `json:"candidate_overrides,omitempty"`
+	Candidate             Candidate                  `json:"candidate"`
+	Answers               []ApplicationAnswer        `json:"answers,omitempty"`
+	Attachments           []Attachment               `json:"attachments,omitempty"`
 }
 
 type Candidate struct {
-	FirstName string `json:"first_name,omitempty"`
-	LastName  string `json:"last_name,omitempty"`
-	Email     string `json:"email,omitempty"`
-	Phone     string `json:"phone,omitempty"`
-	Location  string `json:"location,omitempty"`
-	LinkedIn  string `json:"linkedin,omitempty"`
-	Website   string `json:"website,omitempty"`
+	FullName     string            `json:"full_name,omitempty"`
+	Address      map[string]string `json:"address,omitempty"`
+	Work         []map[string]any  `json:"work,omitempty"`
+	Education    []map[string]any  `json:"education,omitempty"`
+	Skills       []map[string]any  `json:"skills,omitempty"`
+	Languages    []map[string]any  `json:"languages,omitempty"`
+	Certificates []map[string]any  `json:"certificates,omitempty"`
+	FirstName    string            `json:"first_name,omitempty"`
+	LastName     string            `json:"last_name,omitempty"`
+	Email        string            `json:"email,omitempty"`
+	Phone        string            `json:"phone,omitempty"`
+	Location     string            `json:"location,omitempty"`
+	LinkedIn     string            `json:"linkedin,omitempty"`
+	Website      string            `json:"website,omitempty"`
 }
 
 type ApplicationAnswer struct {
@@ -41,6 +53,7 @@ type ApplicationAnswer struct {
 }
 
 type Attachment struct {
+	SHA256      string `json:"sha256,omitempty"`
 	Kind        string `json:"kind"`
 	Path        string `json:"path"`
 	Filename    string `json:"filename,omitempty"`
@@ -79,6 +92,10 @@ func (a *ApplicationArtifact) FingerprintMatches(inspection *ApplicationInspecti
 
 func (c *Candidate) Value(name string) string {
 	switch normalizeFieldName(name) {
+	case "full_name", "name":
+		return c.FullName
+	case "address_line", "postal_code", "country", "region":
+		return c.Address[normalizeFieldName(name)]
 	case "first_name", "firstname", "given_name":
 		return c.FirstName
 	case "last_name", "lastname", "family_name", "surname":

@@ -36,21 +36,26 @@ type CompensationAmount struct {
 }
 
 type Job struct {
-	ID             string             `json:"id"`
-	Source         Source             `json:"source"`
-	SourceJobID    string             `json:"source_job_id"`
-	Title          string             `json:"title"`
-	Employer       string             `json:"employer,omitempty"`
-	Location       string             `json:"location,omitempty"`
-	Workplace      Workplace          `json:"workplace"`
-	Remote         bool               `json:"remote"`
-	Description    string             `json:"description,omitempty"`
-	PostedDate     string             `json:"posted_date,omitempty"`
-	Compensation   *Compensation      `json:"compensation,omitempty"`
-	SourceURL      string             `json:"source_url,omitempty"`
-	ApplicationURL string             `json:"application_url,omitempty"`
-	Application    *ApplicationTarget `json:"application,omitempty"`
-	Diagnostics    *Diagnostics       `json:"diagnostics,omitempty"`
+	ID               string             `json:"id"`
+	Source           Source             `json:"source"`
+	SourceJobID      string             `json:"source_job_id"`
+	Title            string             `json:"title"`
+	Employer         string             `json:"employer,omitempty"`
+	Location         string             `json:"location,omitempty"`
+	Workplace        Workplace          `json:"workplace"`
+	Remote           bool               `json:"remote"`
+	Description      string             `json:"description,omitempty"`
+	ClosingDate      string             `json:"closing_date,omitempty"`
+	EmploymentType   string             `json:"employment_type,omitempty"`
+	EmploymentLength string             `json:"employment_length,omitempty"`
+	Level            string             `json:"level,omitempty"`
+	Tags             []string           `json:"tags,omitempty"`
+	PostedDate       string             `json:"posted_date,omitempty"`
+	Compensation     *Compensation      `json:"compensation,omitempty"`
+	SourceURL        string             `json:"source_url,omitempty"`
+	ApplicationURL   string             `json:"application_url,omitempty"`
+	Application      *ApplicationTarget `json:"application,omitempty"`
+	Diagnostics      *Diagnostics       `json:"diagnostics,omitempty"`
 }
 
 type Diagnostics struct {

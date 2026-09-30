@@ -2,13 +2,15 @@ package domain
 
 // providerCapabilities is the canonical Capability table per Application Provider.
 var providerCapabilities = map[ApplicationProvider]Capabilities{
-	ProviderGreenhouse:      {Inspect: true, Prepare: true, NativeSubmit: true},
+	ProviderGreenhouse:      {Inspect: true, Prepare: true, AuthRequired: true},
 	ProviderLinkedIn:        {Inspect: true, Prepare: true, AuthRequired: true},
-	ProviderIndeed:          {BrowserRequired: true},
+	ProviderIndeed:          {Prepare: true, BrowserRequired: true},
 	ProviderLever:           {BrowserRequired: true},
 	ProviderAshby:           {BrowserRequired: true},
-	ProviderWorkday:         {BrowserRequired: true},
+	ProviderWorkday:         {Inspect: true, Prepare: true, BrowserRequired: true, BrowserFill: true, BrowserSubmit: true, AuthRequired: true},
 	ProviderSmartRecruiters: {BrowserRequired: true},
+	ProviderYZi:             {BrowserRequired: true},
+	ProviderPeopleSoft:      {BrowserRequired: true, AuthRequired: true},
 	ProviderICIMS:           {BrowserRequired: true},
 	ProviderExternal:        {BrowserRequired: true},
 	ProviderUnknown:         {BrowserRequired: true},

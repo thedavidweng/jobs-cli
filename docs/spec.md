@@ -55,9 +55,9 @@ Core functionality will include:
 - LinkedIn authenticated Voyager integration after guided session login and explicit `--authenticated`;
 - canonical normalized job objects;
 - ATS/application-provider resolution;
-- Greenhouse structured application inspection and native submission;
+- Greenhouse public inspection/preparation and employer-authorized native API submission;
 - LinkedIn Easy Apply form inspection; native submission only after live authenticated verification;
-- browser-required application targets for Lever, Ashby, Workday, and SmartRecruiters;
+- browser-required handoff for Lever, Ashby and SmartRecruiters, and explicit Workday browser execution;
 - explicit browser-required results for providers whose public candidate submission cannot be completed natively;
 - stable JSON envelopes and exit codes for Agent use;
 - human-readable output by default;
@@ -475,7 +475,7 @@ The resolver must not become a general browser.
 
 ### 15. Greenhouse native application support
 
-Greenhouse is the first fully native end-to-end application provider.
+Greenhouse provides public inspection and preparation, and an employer-authorized API submission path.
 
 The implementation must support:
 
@@ -490,7 +490,7 @@ The implementation must support:
 - dry-run representation;
 - explicit confirmed submission.
 
-Greenhouse native application submission requires no candidate authentication on the verified public Board API surface.
+Greenhouse POST requires Basic Auth with an employer Job Board API key. Public GET does not authorize anonymous POST. Supply --greenhouse-key-file and --greenhouse-board; the key is never placed in the Application Artifact.
 
 ### 16. Application lifecycle
 
@@ -546,9 +546,9 @@ Resolved Ashby applications expose a usable application URL and `browser_require
 
 ### 20. Workday
 
-Candidate account creation, verification, authentication, session state, and multi-step application wizard remain browser responsibilities.
+Workday wizard execution uses an explicit local CDP endpoint and existing Job tab. inspect/prepare are read-only; fill is a confirmed mutation and stops at review. Users handle account creation, login, email verification, MFA, CAPTCHA and assessments. New or changed step requirements require renewed preparation with --previous-artifact; submit verifies workflow state and review values before one confirmed click.
 
-Resolved Workday applications expose a usable application URL and `browser_required`.
+Resolved Workday applications expose browser_fill and browser_submit separately from native_submit. Runtime behavior is verified against two local employer fixtures; production authenticated submission is unverified. Unsupported controls return a pending action. See ADR-0022 and docs/browser-testing.md.
 
 ### 21. SmartRecruiters
 
@@ -886,7 +886,7 @@ The following are explicitly out of scope for this spec:
 - Automatic screening-question reasoning.
 - Autonomous mass application.
 - Scheduled/background job monitoring.
-- Browser automation inside the CLI (except opening the system browser for LinkedIn login guidance).
+- Browser automation inside the CLI, except opening the system browser for LinkedIn login guidance and the explicit Workday CDP workflow (ADR-0022).
 - Playwright dependency or Node sidecar.
 - CAPTCHA solving or bypass.
 - Anti-bot bypass beyond reproducing already-verified normal official-client request behavior.
@@ -895,7 +895,7 @@ The following are explicitly out of scope for this spec:
 - Direct Indeed Apply implementation in the first version.
 - Native Lever public candidate submission.
 - Native Ashby public candidate submission without an appropriate public candidate API.
-- Native Workday candidate-account/application automation.
+- Workday account creation and native/private API candidate writes.
 - Native iCIMS application automation.
 - Scraping as a replacement for an already-working structured API.
 - New Indeed APK reverse engineering unless the currently verified structured interface actually stops working.
@@ -905,7 +905,7 @@ The following are explicitly out of scope for this spec:
 - v1 first-class `search --source` for ATS boards (Greenhouse/Lever/Ashby/Workday/SmartRecruiters).
 - Installing a binary named `jobs` (shell builtin conflict).
 
-When a provider requires a browser, the CLI returns structured capability information and the application URL. An external Agent may choose to continue in its own browser environment.
+Browser-required providers return structured capabilities and the application URL. Workday supports explicit local browser execution; handoff-only providers leave further actions to official tooling or an external browser-capable Agent.
 
 ---
 
@@ -1068,7 +1068,7 @@ Therefore:
 
 Do not use `tomquirk/linkedin-api` as the primary implementation reference for this work. Its legacy Voyager REST search surface is obsolete relative to the current GraphQL implementation.
 
-#### Greenhouse — VERIFIED WORKING
+#### Greenhouse — PUBLIC READ VERIFIED; SUBMIT REQUIRES EMPLOYER AUTHORIZATION
 
 Greenhouse is the first target for complete native application support.
 
@@ -1092,8 +1092,8 @@ Submit candidate:
 
 Submission:
 
-- public;
-- no candidate API authentication required on the verified Board API flow;
+- requires employer Job Board API key via Basic Auth;
+- public GET and absence of candidate login do not authorize anonymous POST;
 - multipart form data;
 - resume supported;
 - cover letter supported where configured;

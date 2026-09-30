@@ -4,7 +4,9 @@ go 1.27.1
 
 require (
 	github.com/browserutils/kooky v0.2.10
+	github.com/go-rod/rod v0.116.2
 	github.com/google/uuid v1.6.0
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.59.0
 	golang.org/x/term v0.46.0
@@ -20,6 +22,11 @@ require (
 	github.com/keybase/go-keychain v0.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/ysmood/fetchup v0.2.3 // indirect
+	github.com/ysmood/goob v0.4.0 // indirect
+	github.com/ysmood/got v0.40.0 // indirect
+	github.com/ysmood/gson v0.7.3 // indirect
+	github.com/ysmood/leakless v0.9.0 // indirect
 	github.com/zalando/go-keyring v0.2.7 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect

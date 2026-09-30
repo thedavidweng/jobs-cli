@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/thedavidweng/jobs-cli/v2/internal/ashby"
+	"github.com/thedavidweng/jobs-cli/v2/internal/boards"
+	"github.com/thedavidweng/jobs-cli/v2/internal/browserapply"
 	"github.com/thedavidweng/jobs-cli/v2/internal/config"
 	"github.com/thedavidweng/jobs-cli/v2/internal/cookieimport"
 	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
@@ -42,6 +44,9 @@ func New(client *http.Client, cfg *config.Config) *Registry {
 	}
 	r.GuestSources[domain.SourceIndeed] = indeed.NewSource(client)
 	r.GuestSources[domain.SourceLinkedIn] = linkedinguest.NewSource(client)
+	for _, name := range []domain.Source{domain.SourceYZi, domain.SourceCivicInfo, domain.SourceTransLink} {
+		r.GuestSources[name] = boards.New(name, client)
+	}
 	r.AuthSources[domain.SourceLinkedIn] = voyager.NewSource(client, sessions)
 	r.Resolver = resolver.New(client)
 	r.Providers[domain.ProviderGreenhouse] = greenhouse.NewProvider(client)
@@ -51,6 +56,9 @@ func New(client *http.Client, cfg *config.Config) *Registry {
 	r.Providers[domain.ProviderWorkday] = workday.NewProvider()
 	r.Providers[domain.ProviderSmartRecruiters] = smartrecruiters.NewProvider()
 	r.Providers[domain.ProviderICIMS] = icims.NewProvider(client)
+	for _, name := range []domain.ApplicationProvider{domain.ProviderIndeed, domain.ProviderYZi, domain.ProviderPeopleSoft, domain.ProviderExternal} {
+		r.Providers[name] = browserapply.Provider{Name: name}
+	}
 	r.LinkedInAuth = session.New(sessions, cookieimport.New())
 	return r
 }

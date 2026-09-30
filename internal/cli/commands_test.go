@@ -33,7 +33,7 @@ func TestSourcesStatusAndDoctorReportDisjointContent(t *testing.T) {
 	}
 
 	greenhouseEntry := findEntry(t, providers, "greenhouse")
-	if greenhouseEntry["native_submit"] != true || greenhouseEntry["verification"] != "VERIFIED WORKING" {
+	if greenhouseEntry["native_submit"] != false || greenhouseEntry["verification"] != "PARTIALLY VERIFIED" {
 		t.Fatalf("greenhouse capabilities = %#v", greenhouseEntry)
 	}
 	leverEntry := findEntry(t, providers, "lever")

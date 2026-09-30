@@ -1,9 +1,9 @@
 # jobs-cli Command Reference
 
 The installed binary is `jobs-cli`. A **Source** is where a Job was discovered
-(`indeed`, `linkedin`). An **Application Provider** is the system that accepts
+(`indeed`, `linkedin`, `yzi`, `civicinfo`, `translink`). An **Application Provider** is the system that accepts
 the application (`greenhouse`, `linkedin`, `lever`, `ashby`, `workday`,
-`smartrecruiters`, `icims`, `indeed`, `external`). They are never the same field.
+`smartrecruiters`, `icims`, `indeed`, `yzi`, `peoplesoft`, `external`). They are never the same field.
 
 ## Global Flags
 
@@ -23,7 +23,7 @@ Available on every command:
 ## Job Discovery
 
 - `search`: search across discovery sources.
-  - `--query/-q <text>`: keywords (required unless `--location` is given).
+  - `--query/-q <text>`: keywords (required for Indeed/LinkedIn unless `--location` is given; optional for YZi, CivicInfo BC, and TransLink).
   - `--location <text>`: location filter. Indeed takes free text, and its ending
     can also choose the Indeed market (see `--country`). Authenticated
     LinkedIn (Voyager) requires a geo URN (`urn:li:fsd_geo:<id>`, the `geoId`
@@ -35,7 +35,7 @@ Available on every command:
   - `--remote`: filter for remote work where supported.
   - `--sort <mode>`: source-supported sort (e.g. recency).
   - `--limit <n>` (default 25), `--offset <n>`: page sizing.
-  - `--source <name>` (repeatable): `indeed`, `linkedin` in v1. Omitting it
+  - `--source <name>` (repeatable): `indeed`, `linkedin`, `yzi`, `civicinfo`, `translink`. Omitting it
     searches Indeed + LinkedIn (Guest) in parallel.
   - `--cursor <token>`: continue a single source's native pagination.
   - `--authenticated`: use authenticated LinkedIn Voyager instead of Guest for
@@ -75,6 +75,50 @@ Available on every command:
   - `--resolve`: attach a best-effort Application Target.
   - `--authenticated`: use the authenticated LinkedIn surface for `linkedin:` IDs.
     LinkedIn Guest supports search only; `show linkedin:<id>` requires this flag.
+
+### Portfolio and BC boards
+
+```shell
+jobs-cli search --source yzi --remote --limit 25
+jobs-cli search --source civicinfo --query "analyst"
+jobs-cli search --source translink --query "engineer"
+jobs-cli search --source translink --query "engineer" --cursor <next_cursor>
+jobs-cli show yzi:<uuid> --resolve
+jobs-cli show civicinfo:<jobid> --resolve
+jobs-cli show translink:<JobOpeningId> --resolve
+```
+
+These sources need no Indeed market or LinkedIn session. Their search limits
+are 1–100. Keyword and location matching on YZi and TransLink is case-insensitive
+substring matching; YZi keywords include company and tags. CivicInfo uses its
+native keyword search. Location and remote filters are applied locally; `--radius`
+is rejected. YZi and TransLink support `newest`/`date` and `oldest`; CivicInfo
+supports `newest`, `oldest`, `soonest`, and `last`.
+
+The cursor is an offset within the keyword results, before local location/remote
+filtering; `total` counts those candidates. Continue with the same filters and
+sort. Boards can change between calls. CivicInfo cursors cross its native pages
+without dropping jobs when `--limit` is smaller than its page size.
+
+Jobs expose `closing_date` (CivicInfo expiry or PeopleSoft closing date),
+`employment_type`, and `employment_length` where available. Fixed dates use
+`YYYY-MM-DD`; an open-ended closing date remains `Open until filled`. YZi
+search results include `level` and `tags`. TransLink uses the public feed used
+by its careers page and retrieves PeopleSoft descriptions, salary summaries,
+and employment fields. Detail requests run in batches of four; use a longer
+`--timeout` for large pages or restrictive filters.
+
+YZi forms resolve to `yzi`; PeopleSoft candidate wizards resolve to `peoplesoft`
+with `auth_required=true`. Both return `BROWSER_REQUIRED` for native application
+operations, with the URL for a browser agent to upload a tailored resume.
+CivicInfo extracts employer application URLs from job descriptions and resolves
+them through the normal provider classifier. A posting without such a link
+returns its source page for browser routing.
+
+CivicInfo currently challenges direct HTTP requests with Cloudflare HTTP 403 in
+live verification. Its parser and routing are tested, but live CLI discovery is
+not verified working. The source reports `API_ACCESS_FORBIDDEN`; it does not
+substitute newsletters, cached postings, or a browser transport.
 
 ## Applications
 
@@ -218,3 +262,11 @@ Remote application submission is a mutation:
 | 10 | confirmation required |
 
 See `JSON_SCHEMA.md` for the machine-readable error codes and envelopes.
+
+## JSON Resume and Workday execution
+
+`apply prepare --resume-json <file>` accepts JSON Resume v1.0.0, preserves the raw document, and uses manifest candidate keys as explicit overrides. `--resume` remains an upload document, and `--cover-letter` remains optional. Names are not split and date precision is not invented. Same-kind CLI document flags override manifest attachment paths.
+
+Workday inspect/prepare/fill/submit share `--browser-endpoint <local-CDP-URL>` and `--browser-tab <existing-tab-ID>`. `apply fill --artifact <file> --state <file> --confirm` performs intentional writes and stops at review; `apply submit` uses the same state and requires another confirmation. Both obey read-only/dry-run gates. New wizard requirements pause; use `apply prepare <job-id> --previous-artifact <file>` with the same explicit inputs to review the next step. See [browser workflow and test prerequisites](docs/browser-testing.md).
+
+Greenhouse public inspect/prepare need no key. Documented API submit requires `--greenhouse-key-file <file> --greenhouse-board <board>` containing an employer-authorized Job Board API key. Indeed-hosted prepare produces local, unvalidated official handoff material; jobs-cli does not automate Indeed forms.

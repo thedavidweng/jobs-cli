@@ -16,6 +16,8 @@ var representativeApplicationURLs = map[string]string{
 	"smartrecruiters": "https://jobs.smartrecruiters.com/Visa/744000012345678-senior-software-engineer",
 	"icims":           "https://careers-acme.icims.com/jobs/12345/senior-engineer/job",
 	"external":        "https://careers.example.com/jobs/1234",
+	"yzi":             "https://talent.yzilabs.com/jobs/41f81a01-ed89-4983-b433-22d62121a5f4",
+	"peoplesoft":      "https://careersconnect.translink.bc.ca/psc/EXT/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Page=HRS_APP_JBPST_FL&JobOpeningId=20251035&SiteId=2",
 	"unknown":         "https://example.org/about",
 }
 

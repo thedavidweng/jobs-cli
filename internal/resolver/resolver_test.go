@@ -70,8 +70,8 @@ func TestResolveClassifiesProviders(t *testing.T) {
 			jobID:        "4123456",
 			boardToken:   "acme",
 			wantURL:      "https://boards.greenhouse.io/acme/jobs/4123456",
-			capabilities: domain.Capabilities{Inspect: true, Prepare: true, NativeSubmit: true},
-			verification: domain.VerifiedWorking,
+			capabilities: domain.Capabilities{Inspect: true, Prepare: true, AuthRequired: true},
+			verification: domain.PartiallyVerified,
 		},
 		{
 			name:         "greenhouse_embed",
@@ -80,8 +80,8 @@ func TestResolveClassifiesProviders(t *testing.T) {
 			jobID:        "4123456",
 			boardToken:   "acme",
 			wantURL:      "https://job-boards.greenhouse.io/acme/jobs/4123456",
-			capabilities: domain.Capabilities{Inspect: true, Prepare: true, NativeSubmit: true},
-			verification: domain.VerifiedWorking,
+			capabilities: domain.Capabilities{Inspect: true, Prepare: true, AuthRequired: true},
+			verification: domain.PartiallyVerified,
 		},
 		{
 			name:         "lever",
@@ -111,8 +111,8 @@ func TestResolveClassifiesProviders(t *testing.T) {
 			tenant:       "nvidia",
 			site:         "NVIDIAExternalCareerSite",
 			wantURL:      "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Systems-Software-Engineer_JR19827",
-			capabilities: browserRequired,
-			verification: domain.BrowserRequiredPosture,
+			capabilities: domain.CapabilitiesFor(domain.ProviderWorkday),
+			verification: domain.PartiallyVerified,
 		},
 		{
 			name:         "workday_site_only",
@@ -121,8 +121,8 @@ func TestResolveClassifiesProviders(t *testing.T) {
 			tenant:       "workday",
 			site:         "Workday",
 			wantURL:      "https://workday.wd5.myworkdayjobs.com/en-US/Workday",
-			capabilities: browserRequired,
-			verification: domain.BrowserRequiredPosture,
+			capabilities: domain.CapabilitiesFor(domain.ProviderWorkday),
+			verification: domain.PartiallyVerified,
 		},
 		{
 			name:         "smartrecruiters",
@@ -178,7 +178,7 @@ func TestResolveClassifiesProviders(t *testing.T) {
 			provider:     domain.ProviderIndeed,
 			jobID:        "1442abc",
 			wantURL:      "https://www.indeed.com/viewjob?jk=1442abc",
-			capabilities: browserRequired,
+			capabilities: domain.CapabilitiesFor(domain.ProviderIndeed),
 			verification: domain.BrowserRequiredPosture,
 		},
 		{

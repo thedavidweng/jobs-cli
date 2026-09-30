@@ -1,0 +1,6 @@
+{
+ "names":{"website":"website","firstName":"first_name","lastName":"last_name","email":"email","emailAddress":"email","phoneNumber":"phone","addressLine1":"address_line","city":"location","postalCode":"postal_code","country":"country","countryRegion":"region","resume":"resume","coverLetter":"cover_letter"},
+ "sections":{"work":"workExperienceSection","education":"educationSection","skills":"skillsSection","languages":"languagesSection","certificates":"certificationsSection"},
+ "rows":{"work":"workExperience","education":"education","skills":"skill","languages":"language","certificates":"certification"},
+ "keys":{"company":"name","jobTitle":"position","startDate":"startDate","endDate":"endDate","description":"summary","school":"institution","degree":"studyType","fieldOfStudy":"area","skill":"name","language":"language","fluency":"fluency","certification":"name"}
+}
