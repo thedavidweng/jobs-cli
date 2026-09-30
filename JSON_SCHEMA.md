@@ -126,19 +126,14 @@ single source.
 ### Capability Flags
 
 Every Application Target carries a `capabilities` object; `sources status`
-reports the same flags per Application Provider. Both derive from one canonical
-table, so `sources status --json` and `resolve`/`apply inspect` never disagree.
+reports the same flags per Application Provider. The canonical table describes default capabilities. Runtime inspection can enable Greenhouse native_submit when a board-scoped employer key is supplied.
 
-- `inspect`: the CLI can fetch application requirements natively.
-- `prepare`: the CLI can build a validated Application Artifact natively.
+- `inspect`: the CLI can read application requirements through its supported API or explicit browser runtime.
+- `prepare`: the CLI can build locally reviewable application material. Check requirements_validated for handoff/pending artifacts.
 - `native_submit`: the CLI can submit through a supported native interface.
-- `browser_required`: native submission is not available; hand the returned
-  application URL to a browser-capable Agent.
-- `auth_required`: the **CLI-native operation requires CLI-managed
-  authentication** (a CLI session or login, for example the LinkedIn Session).
-  It does **not** mean that a login may exist somewhere in the flow's UI. A
-  provider whose browser flow happens to use a candidate account that jobs-cli
-  does not manage — Indeed Apply, for example — reports `auth_required: false`.
+- `browser_required`: a browser is required. Workday can use the CLI browser runtime; handoff-only providers return the URL.
+- `browser_fill` / `browser_submit`: supported browser execution, distinct from native submission.
+- `auth_required`: execution needs credentials (LinkedIn CLI Session, board-scoped Greenhouse employer key, or the employer-scoped Workday browser session). Handoff-only Indeed does not claim a CLI-managed session.
 
 ### Application Target
 
@@ -155,11 +150,11 @@ Returned by `resolve` (and attached to Jobs with `show --resolve`):
   "capabilities": {
     "inspect": true,
     "prepare": true,
-    "native_submit": true,
+    "native_submit": false,
     "browser_required": false,
-    "auth_required": false
+    "auth_required": true
   },
-  "verification": "VERIFIED WORKING",
+  "verification": "PARTIALLY VERIFIED",
   "resolved_from": "https://..."
 }
 ```
@@ -201,12 +196,12 @@ Returned by `apply inspect`:
 
 Versioned JSON produced by `apply prepare` and consumed by `apply submit`
 (`--artifact <file>` or `--artifact -` for stdin). `schema_version`:
-`2026-09-26`, `artifact_version`: `1`.
+`2026-09-30`, `artifact_version`: `2`.
 
 ```json
 {
-  "schema_version": "2026-09-26",
-  "artifact_version": 1,
+  "schema_version": "2026-09-30",
+  "artifact_version": 2,
   "generated_at": "2026-09-26T12:00:00Z",
   "job_id": "indeed:517ca3fd71acddc9",
   "job_title": "Backend Engineer",
@@ -268,7 +263,7 @@ verified shape — drift is never silently normalized.
 
 ## Application workflow additions (2026-09-30)
 
-Artifact v2 adds full_name, address, repeated work/education/skills/languages/certificates, raw resume_json, requirements_validated, pending_action, browser_steps, and attachment sha256 content digests. Resume entry keys keep JSON Resume spelling (startDate, studyType, etc.). Version 1 native artifacts remain readable; unknown versions fail validation.
+Artifact v2 adds full_name, address, repeated work/education/skills/languages/certificates, raw resume_json, explicit candidate_overrides, requirements_validated, pending_action, browser_steps, and attachment sha256 content digests. Resume entry keys keep JSON Resume spelling (startDate, studyType, etc.). Version 1 native artifacts remain readable; unknown versions fail validation.
 
 Capabilities distinguish browser_fill/browser_submit from native_submit. Workday exposes browser execution with an explicit local CDP connection; its production submission remains unverified. Greenhouse's default capability is public inspection/preparation with auth_required; native_submit requires runtime board-scoped employer credentials.
 

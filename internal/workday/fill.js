@@ -11,7 +11,15 @@ function(artifact,bindings,verify=false) {
    value=matches[0].value;
   }
   if (e.type==='checkbox') {if(typeof value!=='boolean')return 'Explicit boolean required for '+(e.name||e.id);if(verify)return e.checked===value?'':'Browser rejected '+(e.name||e.id);if(e.checked!==value)e.click();return e.checked===value?'':'Browser rejected '+(e.name||e.id);}
-  if (e.type==='radio') {if(String(value)!==e.value)return '';if(verify)return e.checked?'':'Browser rejected '+(e.name||e.id);if(!e.checked)e.click();return e.checked?'':'Browser rejected '+(e.name||e.id);}
+  if (e.type==='radio') {
+   const id=e.name||e.id||e.getAttribute('data-automation-id');
+   const group=[...document.querySelectorAll('input[type="radio"]')].filter(r=>(r.name||r.id||r.getAttribute('data-automation-id'))===id && visible(r));
+   const matches=group.filter(r=>r.value===String(value) || r.labels?.[0]?.textContent.trim()===String(value));
+   if(matches.length!==1)return 'Unsupported radio option for '+id+': '+value;
+   if(e!==matches[0])return '';
+   if(verify)return e.checked?'':'Browser rejected '+id;
+   if(!e.checked)e.click();return e.checked?'':'Browser rejected '+id;
+  }
   if (e.value===String(value)) return '';
   if(verify)return 'Browser rejected '+(e.name||e.getAttribute('data-automation-id'));
   const prototype=e.tagName==='SELECT'?HTMLSelectElement.prototype:e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;

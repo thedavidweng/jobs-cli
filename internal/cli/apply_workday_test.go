@@ -57,7 +57,7 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			target := &domain.ApplicationTarget{URL: server.URL + "/" + employer + "/site/job/JR1", Provider: domain.ProviderWorkday, Tenant: employer, Site: "site", ProviderJobID: "JR1"}
 			reg := testutil.NewRegistry(map[domain.Source]domain.SourceAdapter{domain.SourceIndeed: &testutil.FakeSource{Job: fakeJob(domain.SourceIndeed, "1")}}, &testutil.FakeResolver{Target: target}, map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderWorkday: workday.NewProvider()})
 			h := newHarness(t).useRegistry(reg)
-			manifest := h.writeFile("candidate.json", `{"candidate":{"first_name":"Ada","email":"ada@example.com","phone":"+1 555 0100","website":"","address":{"country":"CA"},"work":[{"name":"Engine","position":"Programmer","startDate":"1842-01"},{"name":"Analytical","position":"Writer","startDate":"1843-02"}],"education":[{"institution":"University","studyType":"Bachelor"}]},"answers":[{"question_id":"authorization","value":"yes"},{"question_id":"consent","value":true},{"question_id":"sponsorship","value":"no"}]}`)
+			manifest := h.writeFile("candidate.json", `{"candidate":{"first_name":"Ada","email":"ada@example.com","phone":"+1 555 0100","website":"","address":{"country":"CA"},"work":[{"name":"Engine","position":"Programmer","startDate":"1842-01"},{"name":"Analytical","position":"Writer","startDate":"1843-02"}],"education":[{"institution":"University","studyType":"Bachelor"}]},"answers":[{"question_id":"authorization","value":"yes"},{"question_id":"consent","value":true},{"question_id":"sponsorship","value":"No"}]}`)
 			flags := []string{"--json", "apply", "--browser-endpoint", endpoint, "--browser-tab", tabID, "--state", h.dir + "/state.json"}
 			run := func(args ...string) (string, int) {
 				out, _, code := h.run(append(append([]string{}, flags...), args...)...)
@@ -65,7 +65,27 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			}
 			resume := h.writeFile("resume.pdf", "fixture resume")
 			path := h.dir + "/application.json"
-			out, code := run("prepare", "indeed:1", "--manifest", manifest, "--resume", resume, "--out", path)
+			var out string
+			var code int
+			if employer == "bank-a" {
+				if err := fixtureEvaluate(ctx, `document.querySelector('#details').hidden=true;document.querySelector('h1').hidden=true;const start=document.createElement('button');start.setAttribute('data-automation-id','adventureButton');start.textContent='Start application';start.onclick=()=>{document.querySelector('#details').hidden=false;document.querySelector('h1').hidden=false;start.remove()};document.body.prepend(start)`, nil); err != nil {
+					t.Fatal(err)
+				}
+				out, code = run("prepare", "indeed:1", "--manifest", manifest, "--resume", resume, "--out", path)
+				if code != 0 {
+					t.Fatalf("prepare pending start: %s", out)
+				}
+				preparedDoc := decodeEnvelope(t, out)
+				artifactDoc, ok := preparedDoc.Data["artifact"].(map[string]any)
+				if !ok || artifactDoc["pending_action"] != "start_application_required" {
+					t.Fatalf("start pending: %s", out)
+				}
+				out, code = run("fill", "--artifact", path, "--confirm")
+				if code != 0 || decodeEnvelope(t, out).Data["status"] != "requirements_changed" {
+					t.Fatalf("start fixture: %s", out)
+				}
+			}
+			out, code = run("prepare", "indeed:1", "--manifest", manifest, "--resume", resume, "--out", path)
 			if code != 0 {
 				t.Fatalf("prepare: %s", out)
 			}
@@ -152,6 +172,12 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			}
 			if rows != 2 {
 				t.Fatalf("work rows: %d", rows)
+			}
+			if err := fixtureEvaluate(ctx, `document.querySelector('input[name=sponsorship]:checked')?.value||''`, &value); err != nil {
+				t.Fatal(err)
+			}
+			if value != "no" {
+				t.Fatalf("radio label was not filled: %s", value)
 			}
 			if err := fixtureEvaluate(ctx, `document.querySelector('input[name=sponsorship][value=yes]').click()`, nil); err != nil {
 				t.Fatal(err)

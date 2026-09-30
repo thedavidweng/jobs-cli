@@ -55,7 +55,7 @@ Core functionality will include:
 - LinkedIn authenticated Voyager integration after guided session login and explicit `--authenticated`;
 - canonical normalized job objects;
 - ATS/application-provider resolution;
-- Greenhouse structured application inspection and native submission;
+- Greenhouse public inspection/preparation and employer-authorized native API submission;
 - LinkedIn Easy Apply form inspection; native submission only after live authenticated verification;
 - browser-required handoff for Lever, Ashby and SmartRecruiters, and explicit Workday browser execution;
 - explicit browser-required results for providers whose public candidate submission cannot be completed natively;
@@ -895,7 +895,7 @@ The following are explicitly out of scope for this spec:
 - Direct Indeed Apply implementation in the first version.
 - Native Lever public candidate submission.
 - Native Ashby public candidate submission without an appropriate public candidate API.
-- Native Workday candidate-account/application automation.
+- Workday account creation and native/private API candidate writes.
 - Native iCIMS application automation.
 - Scraping as a replacement for an already-working structured API.
 - New Indeed APK reverse engineering unless the currently verified structured interface actually stops working.
@@ -905,7 +905,7 @@ The following are explicitly out of scope for this spec:
 - v1 first-class `search --source` for ATS boards (Greenhouse/Lever/Ashby/Workday/SmartRecruiters).
 - Installing a binary named `jobs` (shell builtin conflict).
 
-When a provider requires a browser, the CLI returns structured capability information and the application URL. An external Agent may choose to continue in its own browser environment.
+Browser-required providers return structured capabilities and the application URL. Workday supports explicit local browser execution; handoff-only providers leave further actions to official tooling or an external browser-capable Agent.
 
 ---
 
@@ -1068,7 +1068,7 @@ Therefore:
 
 Do not use `tomquirk/linkedin-api` as the primary implementation reference for this work. Its legacy Voyager REST search surface is obsolete relative to the current GraphQL implementation.
 
-#### Greenhouse — VERIFIED WORKING
+#### Greenhouse — PUBLIC READ VERIFIED; SUBMIT REQUIRES EMPLOYER AUTHORIZATION
 
 Greenhouse is the first target for complete native application support.
 
@@ -1092,8 +1092,8 @@ Submit candidate:
 
 Submission:
 
-- public;
-- no candidate API authentication required on the verified Board API flow;
+- requires employer Job Board API key via Basic Auth;
+- public GET and absence of candidate login do not authorize anonymous POST;
 - multipart form data;
 - resume supported;
 - cover letter supported where configured;

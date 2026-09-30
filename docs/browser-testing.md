@@ -34,7 +34,7 @@ JOBS_TEST_BROWSER=/absolute/path/to/chrome go test ./internal/cli -run TestWorkd
 
 Without JOBS_TEST_BROWSER the browser fixture test explicitly reports skipped. Browser-enabled CI must set that variable to an installed executable; Go mocks alone do not verify browser behavior. Ordinary unit/CLI tests run without a browser.
 
-Both employer fixtures use a real CDP connection and the same adapter. They vary required phone fields and question wording and cover repeated work/education, option matching, file upload, new questionnaire steps, login pause/resume, read-only/dry-run/confirmation, stale requirements, review changes, changed attachment bytes, positive receipt and ambiguous submit without retry.
+Both employer fixtures use a real Rod CDP connection and the same adapter; prior-page form controls are removed on transition. They vary required phone fields and question wording and cover repeated work/education, option matching, file upload, explicit fixture application start, new questionnaire steps, login pause/resume, read-only/dry-run/confirmation, stale requirements, review changes, changed attachment bytes, radio values/display labels and changed selections, unwritable-state rejection before writes, positive receipt and ambiguous submit without retry.
 
 Live checks on 2026-09-30 fetched only the public CIBC and BMO Workday career landing pages. Both are JavaScript application shells; no authenticated application form, saved application, account registration, file upload or production submission was exercised. Production end-to-end verification remains unperformed.
 
