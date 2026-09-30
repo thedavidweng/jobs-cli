@@ -33,3 +33,11 @@ The initial review identified four actionable findings: requiring attachment con
 Spec final re-review reported no remaining actionable findings. No worst remaining issue. Review confirmation is limited to code and local fixtures.
 
 Final findings: Standards 0; Spec 0. No merge or release performed.
+
+## Independent PR review
+
+A second review against remote main found one Spec P1: adding answers from a newly discovered questionnaire invalidated the entire workflow state, losing completed-step and upload evidence. The regression reproduced on both browser fixtures. The fix retains unchanged candidate/document bindings, permits new answers only for inspected uncompleted steps, rejects changed or removed prior answers and additions to completed questions, and invalidates review when new answers are added. Both fixtures pass after the fix. Standards re-review: 0 remaining findings; Spec re-review: 0 remaining findings.
+
+An additional discovery correctness fix enforces the documented maximum of four simultaneous detail requests, covered by a concurrent Search regression. Linux CI now explicitly enables real-browser fixtures rather than leaving them skipped.
+
+After these fixes, `mise run check` passed with JOBS_TEST_BROWSER set to installed Chromium, including the full test suite, build, formatting and lint (0 issues). `go test -race ./internal/boards` passed. No production application was performed. Remote PR gates are checked separately before merge.

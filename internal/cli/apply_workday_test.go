@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -27,7 +28,7 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			if employer == "bank-b" {
 				page = `<label for="phone">Mobile phone</label><input id="phone" data-automation-id="phoneNumber" required>` + page
 			}
-			page = `<div data-automation-id="workExperienceSection"><div data-automation-id="workExperience"><input data-automation-id="company" required><input data-automation-id="jobTitle" required><input data-automation-id="startDate" type="month"></div><button data-automation-id="addButton" onclick="const row=this.parentNode.querySelector('[data-automation-id=workExperience]').cloneNode(true);for(const input of row.querySelectorAll('input'))input.value='';this.before(row)">Add work</button></div><div data-automation-id="educationSection"><div data-automation-id="education"><input data-automation-id="school" required><select data-automation-id="degree" required><option value=""></option><option value="BSc">Bachelor</option></select></div></div><label for="authorization">` + employer + ` Work authorization</label><select id="authorization" required><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select>` + page
+			page = `<div data-automation-id="workExperienceSection"><div data-automation-id="workExperience"><input data-automation-id="company" required><input data-automation-id="jobTitle" required><input data-automation-id="startDate" type="month"></div><button data-automation-id="addButton" onclick="const row=this.parentNode.querySelector('[data-automation-id=workExperience]').cloneNode(true);for(const input of row.querySelectorAll('input'))input.value='';this.before(row)">Add work</button></div><div data-automation-id="educationSection"><div data-automation-id="education"><input data-automation-id="school" required><select data-automation-id="degree" required><option value=""></option><option value="BSc">Bachelor</option></select></div></div><label for="reference">Optional reference</label><input id="reference"><label for="authorization">` + employer + ` Work authorization</label><select id="authorization" required><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select>` + page
 			page = `<div id="details"><label for="website">Website</label><input id="website" data-automation-id="website" value="saved-old"><label for="country">Country</label><select id="country" data-automation-id="country" required><option value=""></option><option value="CA">Canada</option></select>` + page + `<label for="resume">Resume</label><input id="resume" data-automation-id="resume" type="file" required></div><script>
    const next=document.querySelector('[data-automation-id="bottom-navigation-next-button"]');let stage=0;
    document.body.prepend(document.querySelector('h1'));document.body.append(next);
@@ -57,7 +58,7 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			target := &domain.ApplicationTarget{URL: server.URL + "/" + employer + "/site/job/JR1", Provider: domain.ProviderWorkday, Tenant: employer, Site: "site", ProviderJobID: "JR1"}
 			reg := testutil.NewRegistry(map[domain.Source]domain.SourceAdapter{domain.SourceIndeed: &testutil.FakeSource{Job: fakeJob(domain.SourceIndeed, "1")}}, &testutil.FakeResolver{Target: target}, map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderWorkday: workday.NewProvider()})
 			h := newHarness(t).useRegistry(reg)
-			manifest := h.writeFile("candidate.json", `{"candidate":{"first_name":"Ada","email":"ada@example.com","phone":"+1 555 0100","website":"","address":{"country":"CA"},"work":[{"name":"Engine","position":"Programmer","startDate":"1842-01"},{"name":"Analytical","position":"Writer","startDate":"1843-02"}],"education":[{"institution":"University","studyType":"Bachelor"}]},"answers":[{"question_id":"authorization","value":"yes"},{"question_id":"consent","value":true},{"question_id":"sponsorship","value":"No"}]}`)
+			manifest := h.writeFile("candidate.json", `{"candidate":{"first_name":"Ada","email":"ada@example.com","phone":"+1 555 0100","website":"","address":{"country":"CA"},"work":[{"name":"Engine","position":"Programmer","startDate":"1842-01"},{"name":"Analytical","position":"Writer","startDate":"1843-02"}],"education":[{"institution":"University","studyType":"Bachelor"}]},"answers":[{"question_id":"authorization","value":"yes"}]}`)
 			flags := []string{"--json", "apply", "--browser-endpoint", endpoint, "--browser-tab", tabID, "--state", h.dir + "/state.json"}
 			run := func(args ...string) (string, int) {
 				out, _, code := h.run(append(append([]string{}, flags...), args...)...)
@@ -146,6 +147,50 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			if code != 0 || decodeEnvelope(t, out).Data["status"] != "requirements_changed" {
 				t.Fatalf("new questionnaire: %s", out)
 			}
+			// These answers become known only after the questionnaire is inspected.
+			manifestData, err := os.ReadFile(manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var renewed struct {
+				Candidate json.RawMessage            `json:"candidate"`
+				Answers   []domain.ApplicationAnswer `json:"answers"`
+			}
+			if err := json.Unmarshal(manifestData, &renewed); err != nil {
+				t.Fatal(err)
+			}
+			renewed.Answers = append(renewed.Answers, domain.ApplicationAnswer{QuestionID: "consent", Value: true}, domain.ApplicationAnswer{QuestionID: "sponsorship", Value: "No"})
+			writeRenewed := func() {
+				t.Helper()
+				data, err := json.Marshal(renewed)
+				if err != nil {
+					t.Fatal(err)
+				}
+				h.writeFile("candidate.json", string(data))
+			}
+			// Adding later answers may retain completed steps; changing an old answer may not.
+			renewed.Answers[0].Value = "no"
+			writeRenewed()
+			changedPath := h.dir + "/changed-application.json"
+			out, code = run("prepare", "indeed:1", "--manifest", manifest, "--resume", resume, "--previous-artifact", path, "--out", changedPath)
+			if code != 0 {
+				t.Fatalf("prepare changed earlier answer: %s", out)
+			}
+			out, code = run("fill", "--artifact", changedPath, "--confirm")
+			changedAnswer := decodeEnvelope(t, out)
+			requireCode(t, &changedAnswer, "VALIDATION_FAILED", 7, code)
+			renewed.Answers[0].Value = "yes"
+			renewed.Answers = append(renewed.Answers, domain.ApplicationAnswer{QuestionID: "reference", Value: "new earlier value"})
+			writeRenewed()
+			out, code = run("prepare", "indeed:1", "--manifest", manifest, "--resume", resume, "--previous-artifact", path, "--out", changedPath)
+			if code != 0 {
+				t.Fatalf("prepare added earlier answer: %s", out)
+			}
+			out, code = run("fill", "--artifact", changedPath, "--confirm")
+			addedEarlierAnswer := decodeEnvelope(t, out)
+			requireCode(t, &addedEarlierAnswer, "VALIDATION_FAILED", 7, code)
+			renewed.Answers = renewed.Answers[:len(renewed.Answers)-1]
+			writeRenewed()
 			out, code = run("prepare", "indeed:1", "--manifest", manifest, "--resume", resume, "--previous-artifact", path, "--out", path)
 			if code != 0 {
 				t.Fatalf("prepare new step: %s", out)

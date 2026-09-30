@@ -20,6 +20,8 @@ fill can autosave and upload. It requires confirmation; read-only blocks it and 
 
 `requirements_changed` includes the new inspection. Prepare again with `--previous-artifact application.json` plus the same resume, manifest and attachment flags, then rerun fill. Full names are not split automatically; provide explicit first_name/last_name in the manifest. Year-only history cannot populate a month/day-required field; provide the actual date rather than invented precision. Section options must match an actual option value or exact label. Ambiguous saved rows pause for manual reconciliation.
 
+When a new questionnaire appears, add its answers to the manifest during renewed preparation and keep the same state file. New answers must belong to an inspected, uncompleted step; uploads and completed steps are retained. Previously supplied answers cannot change or disappear, and adding an answer to a completed step requires returning to that step for renewed review.
+
 `review_ready` means review the browser and artifact before submit. State binds Candidate/answers/documents and browser review values; changes invalidate that review. Return to the affected step and prepare/fill again. Use a new state file only for deliberately changed reviewed input; it cannot submit directly from a pre-existing review page. Do not delete state to retry an uncertain write.
 
 `submission_uncertain` means the click was attempted but no reliable receipt was observed. Further submit calls inspect for a receipt and do not click again. Check Candidate Home yourself. A receipt may still leave assessment or Candidate Home tasks.

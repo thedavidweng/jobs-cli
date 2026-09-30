@@ -58,6 +58,7 @@ type pageSnapshot struct {
 type workflowState struct {
 	Target              domain.ApplicationTarget `json:"target"`
 	InputHash           string                   `json:"input_hash"`
+	AnswerHashes        map[string]string        `json:"answer_hashes"`
 	Uploads             map[string]string        `json:"uploads"`
 	Steps               map[string]string        `json:"steps"`
 	ReviewHash          string                   `json:"review_hash,omitempty"`
@@ -195,11 +196,10 @@ func reviewHash(page *pageSnapshot) string {
 func inputHash(a *domain.ApplicationArtifact) string {
 	return hash(struct {
 		Candidate   domain.Candidate
-		Answers     []domain.ApplicationAnswer
 		Attachments []domain.Attachment
 		Resume      json.RawMessage
 		Overrides   map[string]json.RawMessage
-	}{a.Candidate, a.Answers, a.Attachments, a.ResumeJSON, a.CandidateOverrides})
+	}{a.Candidate, a.Attachments, a.ResumeJSON, a.CandidateOverrides})
 }
 
 func validation(message string) error {
@@ -230,7 +230,7 @@ func (p *BrowserProvider) load(a *domain.ApplicationArtifact) (workflowState, er
 	}
 	data, err := os.ReadFile(p.StatePath)
 	if os.IsNotExist(err) {
-		return workflowState{Target: a.Application, InputHash: inputHash(a), Steps: map[string]string{}, Uploads: map[string]string{}}, nil
+		return workflowState{Target: a.Application, InputHash: inputHash(a), AnswerHashes: answerHashes(a), Steps: map[string]string{}, Uploads: map[string]string{}}, nil
 	}
 	if err != nil {
 		return workflowState{}, err
@@ -243,12 +243,49 @@ func (p *BrowserProvider) load(a *domain.ApplicationArtifact) (workflowState, er
 		return state, validation("workflow state belongs to a different Application Target")
 	}
 	if state.InputHash != inputHash(a) {
-		return state, validation("reviewed candidate/answers/attachments changed; use a new state file and review again")
+		return state, validation("reviewed candidate/attachments changed; use a new state file and review again")
 	}
-	if state.Steps == nil || state.Uploads == nil {
+	if state.Steps == nil || state.Uploads == nil || state.AnswerHashes == nil {
 		return state, validation("invalid browser workflow state")
 	}
+	currentAnswers := answerHashes(a)
+	for id, digest := range state.AnswerHashes {
+		if currentAnswers[id] != digest {
+			return state, validation("previously reviewed answers changed; review the affected steps again")
+		}
+	}
+	for id := range currentAnswers {
+		if _, known := state.AnswerHashes[id]; known {
+			continue
+		}
+		pendingQuestion := false
+		for index := range a.BrowserSteps {
+			step := &a.BrowserSteps[index]
+			for _, question := range step.Questions {
+				if question.ID != id {
+					continue
+				}
+				if _, completed := state.Steps[step.Step]; completed {
+					return state, validation("answer added to an already completed step; review the affected step again")
+				}
+				pendingQuestion = true
+			}
+		}
+		if !pendingQuestion {
+			return state, validation("new answers must belong to an inspected, uncompleted step")
+		}
+		state.ReviewHash = ""
+	}
+	state.AnswerHashes = currentAnswers
 	return state, nil
+}
+
+func answerHashes(a *domain.ApplicationArtifact) map[string]string {
+	result := make(map[string]string, len(a.Answers))
+	for _, answer := range a.Answers {
+		result[answer.QuestionID] = hash(answer.Value)
+	}
+	return result
 }
 
 func approved(a *domain.ApplicationArtifact, i *domain.ApplicationInspection) bool {
