@@ -1,0 +1,53 @@
+name: Request a new job Source
+description: Suggest a job site for jobs-cli search.
+title: "Source request: "
+labels: [enhancement, needs-triage]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for this Source.
+          required: true
+        - label: I checked the supported Sources in the README; this site is not already supported for search.
+          required: true
+        - label: This request covers one job Source, not an Application Provider used only to submit applications.
+          required: true
+  - type: input
+    id: source-name
+    attributes:
+      label: Source name
+      placeholder: Example Jobs
+    validations:
+      required: true
+  - type: input
+    id: search-url
+    attributes:
+      label: Example search results URL
+      description: Link to a search that shows job results, not just the site's homepage.
+      placeholder: https://example.com/jobs?q=engineer
+    validations:
+      required: true
+  - type: input
+    id: job-url
+    attributes:
+      label: Example Job URL
+      description: Link to one specific Job from the search results; note below if login is needed.
+      placeholder: https://example.com/jobs/123
+    validations:
+      required: true
+  - type: textarea
+    id: access
+    attributes:
+      label: Access and coverage
+      description: Note any login requirement, location restriction, or other step needed to view results. Say "none" if there are none.
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Why add this Source?
+      description: What Jobs does it cover that the current Sources do not?
+    validations:
+      required: true

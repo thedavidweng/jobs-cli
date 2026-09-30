@@ -70,7 +70,7 @@ homebrew_casks:
     homepage: https://github.com/thedavidweng/jobs-cli
     description: Agent-friendly CLI for job discovery and applications
     hooks:
-      post:
+      pre:
         install: |
           if OS.mac?
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/jobs-cli"]
