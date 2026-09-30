@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-rod/rod"
@@ -29,6 +30,7 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 				page = `<label for="phone">Mobile phone</label><input id="phone" data-automation-id="phoneNumber" required>` + page
 			}
 			page = `<div data-automation-id="workExperienceSection"><div data-automation-id="workExperience"><input data-automation-id="company" required><input data-automation-id="jobTitle" required><input data-automation-id="startDate" type="month"></div><button data-automation-id="addButton" onclick="const row=this.parentNode.querySelector('[data-automation-id=workExperience]').cloneNode(true);for(const input of row.querySelectorAll('input'))input.value='';this.before(row)">Add work</button></div><div data-automation-id="educationSection"><div data-automation-id="education"><input data-automation-id="school" required><select data-automation-id="degree" required><option value=""></option><option value="BSc">Bachelor</option></select></div></div><label for="reference">Optional reference</label><input id="reference"><label for="authorization">` + employer + ` Work authorization</label><select id="authorization" required><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select>` + page
+			page = strings.Replace(page, `>My Information</h1>`, `>My &quot;Information&quot; &apos;details&apos;</h1>`, 1)
 			page = `<div id="details"><label for="website">Website</label><input id="website" data-automation-id="website" value="saved-old"><label for="country">Country</label><select id="country" data-automation-id="country" required><option value=""></option><option value="CA">Canada</option></select>` + page + `<label for="resume">Resume</label><input id="resume" data-automation-id="resume" type="file" required></div><script>
    const next=document.querySelector('[data-automation-id="bottom-navigation-next-button"]');let stage=0;
    document.body.prepend(document.querySelector('h1'));document.body.append(next);

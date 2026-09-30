@@ -138,7 +138,7 @@ func (p *BrowserProvider) connect(parent context.Context, t *domain.ApplicationT
 
 func readPage(ctx *rod.Page) (pageSnapshot, error) {
 	var page pageSnapshot
-	err := evaluate(ctx, "("+inspectScript+")("+bindingsJSON+")", &page)
+	err := evaluate(ctx, inspectScript, &page, json.RawMessage(bindingsJSON))
 	return page, err
 }
 
@@ -375,12 +375,8 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 		if err := p.save(&state); err != nil {
 			return nil, err
 		}
-		payload, err := json.Marshal(req.Artifact)
-		if err != nil {
-			return nil, err
-		}
 		var pending string
-		if err := evaluate(browser, "("+fillScript+")("+string(payload)+","+bindingsJSON+")", &pending); err != nil {
+		if err := evaluate(browser, fillScript, &pending, req.Artifact, json.RawMessage(bindingsJSON)); err != nil {
 			return nil, err
 		}
 		if strings.HasPrefix(pending, "row_added:") {
@@ -391,8 +387,7 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 			if err := json.Unmarshal([]byte(strings.TrimPrefix(pending, "row_added:")), &added); err != nil {
 				return nil, err
 			}
-			expression := `document.querySelectorAll(` + quote(added.Selector) + `).length > ` + fmt.Sprint(added.Count)
-			if err := browser.Timeout(5 * time.Second).Wait(rod.Eval("() => (" + expression + ")")); err != nil {
+			if err := browser.Timeout(5 * time.Second).Wait(rod.Eval(`(selector, count) => document.querySelectorAll(selector).length > count`, added.Selector, added.Count)); err != nil {
 				return nil, err
 			}
 			continue
@@ -415,7 +410,7 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 			result.Receipt["inspection"] = inspection(&req.Target, &updated)
 			return result, nil
 		}
-		if err := evaluate(browser, "("+fillScript+")("+string(payload)+","+bindingsJSON+",true)", &pending); err != nil {
+		if err := evaluate(browser, fillScript, &pending, req.Artifact, json.RawMessage(bindingsJSON), true); err != nil {
 			return nil, err
 		}
 		if pending != "" {
@@ -468,12 +463,12 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 		if err := p.save(&state); err != nil {
 			return nil, err
 		}
-		if err := clickAndWait(browser, updated.Controls["next"], `document.querySelector('[data-automation-id="applyFlowPage"]')?.textContent.trim() !== `+quote(page.Step)+` || !!document.querySelector('[data-automation-id="applicationConfirmation"]')`); err != nil {
+		if err := clickAndWait(browser, updated.Controls["next"], `document.querySelector('[data-automation-id="applyFlowPage"]')?.textContent.trim() !== args[0] || !!document.querySelector('[data-automation-id="applicationConfirmation"]')`, page.Step); err != nil {
 			return nil, err
 		}
 	}
 }
-func quote(value string) string { data, _ := json.Marshal(value); return string(data) }
+
 func (p *BrowserProvider) Submit(ctx context.Context, req *domain.SubmitRequest) (*domain.SubmissionResult, error) {
 	state, err := p.load(&req.Artifact)
 	if err != nil {
@@ -539,8 +534,8 @@ func receipt(page *pageSnapshot) *domain.SubmissionResult {
 	return result
 }
 
-func evaluate(page *rod.Page, expression string, out any) error {
-	result, err := page.Eval("() => (" + expression + ")")
+func evaluate(page *rod.Page, function string, out any, args ...any) error {
+	result, err := page.Eval(function, args...)
 	if err != nil {
 		return err
 	}
@@ -550,7 +545,7 @@ func evaluate(page *rod.Page, expression string, out any) error {
 	return result.Value.Unmarshal(out)
 }
 
-func clickAndWait(page *rod.Page, selector, expression string) error {
+func clickAndWait(page *rod.Page, selector, expression string, args ...any) error {
 	element, err := page.Element(selector)
 	if err != nil {
 		return err
@@ -558,7 +553,7 @@ func clickAndWait(page *rod.Page, selector, expression string) error {
 	if err := element.Click(proto.InputMouseButtonLeft, 1); err != nil {
 		return err
 	}
-	return page.Timeout(5 * time.Second).Wait(rod.Eval("() => (" + expression + ")"))
+	return page.Timeout(5 * time.Second).Wait(rod.Eval("(...args) => ("+expression+")", args...))
 }
 
 func upload(page *rod.Page, selector, path string) error {

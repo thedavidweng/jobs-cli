@@ -41,3 +41,5 @@ A second review against remote main found one Spec P1: adding answers from a new
 An additional discovery correctness fix enforces the documented maximum of four simultaneous detail requests, covered by a concurrent Search regression. Linux CI now explicitly enables real-browser fixtures rather than leaving them skipped.
 
 After these fixes, `mise run check` passed with JOBS_TEST_BROWSER set to installed Chromium, including the full test suite, build, formatting and lint (0 issues). `go test -race ./internal/boards` passed. No production application was performed. Remote PR gates are checked separately before merge.
+
+Remote CodeQL identified potentially unsafe quoting in a browser navigation expression. Browser functions now receive artifact data, selectors and step names through Rod's structured arguments; dynamic JSON/string interpolation and the quoting helper were removed. The two fixtures include step titles containing single and double quotes and pass with the parameterized implementation. Standards review found no new issues. The alert is addressed in code rather than suppressed.
