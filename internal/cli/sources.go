@@ -57,6 +57,9 @@ func sourcesStatusCmd(a *App) *cobra.Command {
 
 func discoverySources() []entryStatus {
 	return []entryStatus{
+		{Name: "yzi", Mode: "public-html", Kind: "discovery_source", Role: "discovery", Verification: string(domain.VerifiedWorking), Notes: "public page data; on-site applications require a browser"},
+		{Name: "civicinfo", Mode: "public-html", Kind: "discovery_source", Role: "discovery", Verification: string(domain.PartiallyVerified), Notes: "posted/expiry dates and employer application URLs; public HTTP requests may require browser verification"},
+		{Name: "translink", Mode: "public-feed", Kind: "discovery_source", Role: "discovery", Verification: string(domain.VerifiedWorking), Notes: "public TransLink feed and PeopleSoft details; candidate account and wizard require a browser"},
 		{
 			Name: "indeed", Mode: "mobile-graphql", Kind: "discovery_source", Role: "discovery",
 			Verification: string(domain.VerifiedWorking),
@@ -94,6 +97,8 @@ func applicationProviders() []entryStatus {
 			"candidate application is browser-only; jobs-cli does not provide a structured read API"),
 		providerEntry(domain.ProviderICIMS, "browser", string(domain.PartiallyVerified),
 			"public Schema.org/JSON-LD detail where available; native submission is not claimed"),
+		providerEntry(domain.ProviderYZi, "browser", string(domain.BrowserRequiredPosture), "on-site YZi application form and human verification require a browser"),
+		providerEntry(domain.ProviderPeopleSoft, "browser", string(domain.BrowserRequiredPosture), "PeopleSoft candidate account and application wizard require a browser"),
 		providerEntry(domain.ProviderExternal, "browser", string(domain.BrowserRequiredPosture),
 			"unrecognized employer site; return the URL for an external browser-capable Agent"),
 		providerEntry(domain.ProviderUnknown, "browser", string(domain.BrowserRequiredPosture),

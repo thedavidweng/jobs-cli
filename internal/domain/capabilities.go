@@ -9,6 +9,8 @@ var providerCapabilities = map[ApplicationProvider]Capabilities{
 	ProviderAshby:           {BrowserRequired: true},
 	ProviderWorkday:         {BrowserRequired: true},
 	ProviderSmartRecruiters: {BrowserRequired: true},
+	ProviderYZi:             {BrowserRequired: true},
+	ProviderPeopleSoft:      {BrowserRequired: true, AuthRequired: true},
 	ProviderICIMS:           {BrowserRequired: true},
 	ProviderExternal:        {BrowserRequired: true},
 	ProviderUnknown:         {BrowserRequired: true},

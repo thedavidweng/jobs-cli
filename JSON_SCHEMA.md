@@ -52,6 +52,11 @@ go to stderr.
   "remote": true,
   "description": "...",
   "posted_date": "2026-09-20",
+  "closing_date": "2026-10-20",
+  "employment_type": "Full-Time",
+  "employment_length": "Regular",
+  "level": "Senior",
+  "tags": ["AI"],
   "compensation": {
     "amounts": [{ "kind": "range", "min": 100000, "max": 140000 }],
     "currency": "CAD",
@@ -63,6 +68,12 @@ go to stderr.
   "application": { }
 }
 ```
+
+`closing_date`, `employment_type`, `employment_length`, `level`, and `tags`
+are optional. CivicInfo expiry and TransLink closing dates use `closing_date`;
+fixed dates are `YYYY-MM-DD`, and open-ended deadlines retain their source text
+(for example `Open until filled`). YZi search returns level and tags. TransLink
+compensation retains the source salary text in `compensation.summary`.
 
 `application` (an Application Target) is attached only when explicitly resolved.
 Provider-specific raw payloads never appear in the top-level contract; with

@@ -104,6 +104,12 @@ func (a *App) printJob(job *domain.Job) {
 	if job.PostedDate != "" {
 		fmt.Fprintf(a.out, "  posted:       %s\n", job.PostedDate)
 	}
+	if job.ClosingDate != "" {
+		fmt.Fprintf(a.out, "  closing:      %s\n", job.ClosingDate)
+	}
+	if job.EmploymentType != "" {
+		fmt.Fprintf(a.out, "  employment:   %s %s\n", job.EmploymentType, job.EmploymentLength)
+	}
 	if job.Compensation != nil {
 		fmt.Fprintf(a.out, "  compensation: %s\n", compensationLabel(job.Compensation))
 	}

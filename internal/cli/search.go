@@ -39,7 +39,11 @@ func searchCmd(a *App) *cobra.Command {
 		Long: `Search discovery sources. Results are partitioned by Source; jobs-cli never
 merges or deduplicates across sources. Default sources are indeed and linkedin (Guest).
 --authenticated switches the linkedin partition to authenticated Voyager; sources
-without an authenticated variant (indeed) keep their single implementation.
+without an authenticated variant keep their single implementation.
+
+YZi, CivicInfo BC, and TransLink can list their boards without keywords. Use
+--source yzi, civicinfo, or translink; their limit is 1–100. Location matching
+is case-insensitive text matching. These boards do not support --radius.
 
 Indeed searches one market (country) and has no default. The market comes from
 --country, else from the end of --location (a US state, Canadian province, or
@@ -64,7 +68,7 @@ Continuation is per source: pass exactly one --source plus that source's native
 	cmd.Flags().IntVar(&f.limit, "limit", 25, "maximum results per source")
 	cmd.Flags().IntVar(&f.offset, "offset", 0, "native offset for single-source continuation")
 	cmd.Flags().StringVar(&f.cursor, "cursor", "", "native cursor for single-source continuation")
-	cmd.Flags().StringSliceVar(&f.sources, "source", nil, "discovery source (repeatable; v1: indeed, linkedin)")
+	cmd.Flags().StringSliceVar(&f.sources, "source", nil, "discovery source (repeatable; indeed, linkedin, yzi, civicinfo, translink)")
 	cmd.Flags().BoolVar(&f.authenticated, "authenticated", false, "use authenticated LinkedIn (Voyager) instead of Guest (LinkedIn only)")
 	cmd.Flags().StringVar(&f.country, "country", "", "Indeed market as an ISO country code, e.g. US, CA, GB (overrides --location inference, JOBS_COUNTRY, and the profile)")
 	cmd.Flags().StringVar(&f.locale, "locale", "", "Indeed locale as language-REGION, e.g. fr-CA (default: JOBS_LOCALE or the profile locale when its region is the market, else en-<country>)")
@@ -74,13 +78,16 @@ Continuation is per source: pass exactly one --source plus that source's native
 func (a *App) runSearch(cmd *cobra.Command, f *searchFlags) error {
 	ctx := cmd.Context()
 
-	if f.query == "" && f.location == "" {
-		return invalid("provide --query and/or --location")
-	}
-
 	sources, err := a.resolveSearchSources(cmd, f)
 	if err != nil {
 		return err
+	}
+	if f.query == "" && f.location == "" {
+		for _, source := range sources {
+			if source == domain.SourceIndeed || source == domain.SourceLinkedIn {
+				return invalid("provide --query and/or --location")
+			}
+		}
 	}
 
 	mkt, marketErr := a.searchMarket(f)
@@ -219,7 +226,7 @@ func (a *App) resolveSearchSources(cmd *cobra.Command, f *searchFlags) ([]domain
 	for _, name := range requested {
 		source := domain.Source(strings.ToLower(strings.TrimSpace(name)))
 		if !source.Valid() {
-			return nil, invalid(fmt.Sprintf("unsupported --source %q; v1 supports: indeed, linkedin", name))
+			return nil, invalid(fmt.Sprintf("unsupported --source %q; supports: indeed, linkedin, yzi, civicinfo, translink", name))
 		}
 		sources = append(sources, source)
 	}

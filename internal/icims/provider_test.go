@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -34,7 +35,7 @@ func TestInspectExtractsJSONLDAndRequiresBrowser(t *testing.T) {
 	if !inspection.Capabilities.BrowserRequired || inspection.Capabilities.NativeSubmit {
 		t.Fatalf("capabilities = %#v, want browser required without native submit", inspection.Capabilities)
 	}
-	if req.Job != (domain.Job{}) {
+	if !reflect.DeepEqual(req.Job, domain.Job{}) {
 		t.Fatalf("inspect must not mutate the request job: %+v", req.Job)
 	}
 }

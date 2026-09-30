@@ -21,6 +21,8 @@ const (
 	ProviderWorkday         ApplicationProvider = "workday"
 	ProviderSmartRecruiters ApplicationProvider = "smartrecruiters"
 	ProviderICIMS           ApplicationProvider = "icims"
+	ProviderYZi             ApplicationProvider = "yzi"
+	ProviderPeopleSoft      ApplicationProvider = "peoplesoft"
 	ProviderExternal        ApplicationProvider = "external"
 	ProviderUnknown         ApplicationProvider = "unknown"
 )
