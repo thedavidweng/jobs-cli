@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 	joberrors "github.com/thedavidweng/jobs-cli/v2/internal/errors"
@@ -93,5 +95,34 @@ func TestBoardsRejectChallengesAndChangedSchemas(t *testing.T) {
 func TestTransLinkOrdinalDates(t *testing.T) {
 	if got := date("September 25th 2026"); got != "2026-09-25" {
 		t.Fatalf("date = %q", got)
+	}
+}
+
+func TestCivicSearchLimitsDetailConcurrency(t *testing.T) {
+	var active, peak atomic.Int32
+	s := New(domain.SourceCivicInfo, &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Query().Get("jobid") == "" {
+			body := `<p class="showing"><span>12</span></p>`
+			for id := range 12 {
+				body += fmt.Sprintf(`<li class="jobbox-%d"><div class="title"><a href="careers?jobid=%d">Engineer</a></div></li>`, id+1, id+1)
+			}
+			return reply(r, 200, body), nil
+		}
+		now := active.Add(1)
+		defer active.Add(-1)
+		for old := peak.Load(); now > old; old = peak.Load() {
+			if peak.CompareAndSwap(old, now) {
+				break
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+		return reply(r, 200, `<div class="job-description">Description</div><div class="job-overview"><h6>Job Title</h6><p>Engineer</p></div>`), nil
+	})})
+	result, err := s.Search(context.Background(), &domain.SearchRequest{Limit: 12})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Jobs) != 12 || peak.Load() > 4 {
+		t.Fatalf("jobs=%d, concurrent detail requests=%d", len(result.Jobs), peak.Load())
 	}
 }
