@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.0](https://github.com/thedavidweng/jobs-cli/compare/v2.0.2...v2.1.0) (2026-09-30)
+
+
+### Features
+
+* add local discovery sources and JSON Resume Workday applications ([#24](https://github.com/thedavidweng/jobs-cli/issues/24)) ([1d883e4](https://github.com/thedavidweng/jobs-cli/commit/1d883e424a52393f7ca89014920ac24ccfadabf8))
+
+
+### Bug Fixes
+
+* remove the PATH block when install.sh uninstalls ([4b948f3](https://github.com/thedavidweng/jobs-cli/commit/4b948f3cc6ad8b857fc5895b7b043a2fa4ad4d02))
+* stop install.ps1 from rewriting the user Path ([ef2f6da](https://github.com/thedavidweng/jobs-cli/commit/ef2f6da4d08f79d0f37867fbe2a0940c10c8c5b4))
+
+
+### Documentation
+
+* clarify Indeed Apply handoff and automation constraints ([eda8e41](https://github.com/thedavidweng/jobs-cli/commit/eda8e41fb949d1d82dbe113aac9543de81900c43))
+
 ## [2.0.2](https://github.com/thedavidweng/jobs-cli/compare/v2.0.1...v2.0.2) (2026-09-28)
 
 
