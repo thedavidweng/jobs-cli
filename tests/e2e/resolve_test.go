@@ -34,10 +34,13 @@ func TestResolveJSONReturnsApplicationTargetOnly(t *testing.T) {
 	if !ok {
 		t.Fatalf("data.capabilities = %#v", doc.Data["capabilities"])
 	}
-	for _, flag := range []string{"inspect", "prepare", "native_submit"} {
+	for _, flag := range []string{"inspect", "prepare", "auth_required"} {
 		if capabilities[flag] != true {
-			t.Errorf("capabilities.%s = %v, want false", flag, capabilities[flag])
+			t.Errorf("capabilities.%s = %v, want true", flag, capabilities[flag])
 		}
+	}
+	if capabilities["native_submit"] != false {
+		t.Errorf("anonymous native_submit = %v", capabilities["native_submit"])
 	}
 	if capabilities["browser_required"] != false {
 		t.Errorf("capabilities.browser_required = %v, want false", capabilities["browser_required"])

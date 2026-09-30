@@ -73,10 +73,11 @@ type QuestionOption struct {
 }
 
 type ApplicationField struct {
-	Name     string `json:"name"`
-	Label    string `json:"label"`
-	Type     string `json:"type"`
-	Required bool   `json:"required"`
+	Options  []QuestionOption `json:"options,omitempty"`
+	Name     string           `json:"name"`
+	Label    string           `json:"label"`
+	Type     string           `json:"type"`
+	Required bool             `json:"required"`
 }
 
 type ApplicationInspection struct {

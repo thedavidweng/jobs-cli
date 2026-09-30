@@ -11,22 +11,23 @@ const ArtifactSchemaVersion = "2026-09-30"
 const ArtifactVersion = 2
 
 type ApplicationArtifact struct {
-	PendingAction         string                  `json:"pending_action,omitempty"`
-	RequirementsValidated bool                    `json:"requirements_validated"`
-	SchemaVersion         string                  `json:"schema_version"`
-	ArtifactVersion       int                     `json:"artifact_version"`
-	GeneratedAt           string                  `json:"generated_at"`
-	JobID                 string                  `json:"job_id"`
-	JobTitle              string                  `json:"job_title,omitempty"`
-	Employer              string                  `json:"employer,omitempty"`
-	Provider              ApplicationProvider     `json:"provider"`
-	Application           ApplicationTarget       `json:"application"`
-	Fingerprint           string                  `json:"fingerprint"`
-	BrowserSteps          []ApplicationInspection `json:"browser_steps,omitempty"`
-	ResumeJSON            json.RawMessage         `json:"resume_json,omitempty"`
-	Candidate             Candidate               `json:"candidate"`
-	Answers               []ApplicationAnswer     `json:"answers,omitempty"`
-	Attachments           []Attachment            `json:"attachments,omitempty"`
+	PendingAction         string                     `json:"pending_action,omitempty"`
+	RequirementsValidated bool                       `json:"requirements_validated"`
+	SchemaVersion         string                     `json:"schema_version"`
+	ArtifactVersion       int                        `json:"artifact_version"`
+	GeneratedAt           string                     `json:"generated_at"`
+	JobID                 string                     `json:"job_id"`
+	JobTitle              string                     `json:"job_title,omitempty"`
+	Employer              string                     `json:"employer,omitempty"`
+	Provider              ApplicationProvider        `json:"provider"`
+	Application           ApplicationTarget          `json:"application"`
+	Fingerprint           string                     `json:"fingerprint"`
+	BrowserSteps          []ApplicationInspection    `json:"browser_steps,omitempty"`
+	ResumeJSON            json.RawMessage            `json:"resume_json,omitempty"`
+	CandidateOverrides    map[string]json.RawMessage `json:"candidate_overrides,omitempty"`
+	Candidate             Candidate                  `json:"candidate"`
+	Answers               []ApplicationAnswer        `json:"answers,omitempty"`
+	Attachments           []Attachment               `json:"attachments,omitempty"`
 }
 
 type Candidate struct {

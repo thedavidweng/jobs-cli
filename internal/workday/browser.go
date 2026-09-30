@@ -7,14 +7,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"time"
 
-	"github.com/chromedp/cdproto/target"
-	"github.com/chromedp/chromedp"
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/cdp"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/thedavidweng/jobs-cli/v2/internal/artifact"
 	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 	"github.com/thedavidweng/jobs-cli/v2/internal/errors"
@@ -25,6 +27,9 @@ var inspectScript string
 
 //go:embed fill.js
 var fillScript string
+
+//go:embed bindings.json
+var bindingsJSON string
 
 type BrowserProvider struct{ Endpoint, Tab, StatePath string }
 
@@ -53,13 +58,14 @@ type pageSnapshot struct {
 type workflowState struct {
 	Target              domain.ApplicationTarget `json:"target"`
 	InputHash           string                   `json:"input_hash"`
+	Uploads             map[string]string        `json:"uploads"`
 	Steps               map[string]string        `json:"steps"`
 	ReviewHash          string                   `json:"review_hash,omitempty"`
 	StartAttempted      bool                     `json:"start_attempted,omitempty"`
 	SubmissionAttempted bool                     `json:"submission_attempted,omitempty"`
 }
 
-func (p *BrowserProvider) connect(parent context.Context, t *domain.ApplicationTarget) (context.Context, func(), error) {
+func (p *BrowserProvider) connect(parent context.Context, t *domain.ApplicationTarget) (*rod.Page, func(), error) {
 	endpoint, err := url.Parse(p.Endpoint)
 	if err != nil || (endpoint.Scheme != "http" && endpoint.Scheme != "ws") || endpoint.User != nil {
 		return nil, nil, validation("--browser-endpoint must be a local http or ws CDP endpoint")
@@ -71,21 +77,43 @@ func (p *BrowserProvider) connect(parent context.Context, t *domain.ApplicationT
 	if p.Tab == "" {
 		return nil, nil, validation("--browser-tab must identify an existing Job tab")
 	}
-	allocator, cancelAllocator := chromedp.NewRemoteAllocator(context.WithoutCancel(parent), p.Endpoint)
-	owner, cancel := chromedp.NewContext(allocator, chromedp.WithTargetID(target.ID(p.Tab)))
-	ctx, cancelRun := context.WithCancel(owner)
-	stop := context.AfterFunc(parent, cancelRun)
-	closeConnection := func() {
-		stop()
-		cancelRun()
-		// This is a borrowed tab: detach the CDP session without closing the user's tab.
-		if c := chromedp.FromContext(owner); c.Target != nil {
-			c.Target.TargetID = ""
+	wsURL := p.Endpoint
+	if endpoint.Scheme == "http" {
+		request, err := http.NewRequestWithContext(parent, http.MethodGet, strings.TrimRight(p.Endpoint, "/")+"/json/version", http.NoBody)
+		if err != nil {
+			return nil, nil, err
 		}
-		cancel()
-		cancelAllocator()
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			return nil, nil, err
+		}
+		var version struct {
+			URL string `json:"webSocketDebuggerUrl"`
+		}
+		decodeErr := json.NewDecoder(response.Body).Decode(&version)
+		_ = response.Body.Close()
+		if decodeErr != nil {
+			return nil, nil, decodeErr
+		}
+		wsURL = version.URL
 	}
-	if err := chromedp.Run(ctx); err != nil {
+	wsEndpoint, err := url.Parse(wsURL)
+	if err != nil || wsEndpoint.Scheme != "ws" || wsEndpoint.Host != endpoint.Host {
+		return nil, nil, validation("browser returned a different CDP origin")
+	}
+	socket := &cdp.WebSocket{}
+	if err := socket.Connect(parent, wsURL, nil); err != nil {
+		return nil, nil, err
+	}
+	stop := context.AfterFunc(parent, func() { _ = socket.Close() })
+	closeConnection := func() { stop(); _ = socket.Close() }
+	connection := rod.New().Context(parent).Client(cdp.New().Start(socket))
+	if err := connection.Connect(); err != nil {
+		closeConnection()
+		return nil, nil, err
+	}
+	ctx, err := connection.PageFromTarget(proto.TargetTargetID(p.Tab))
+	if err != nil {
 		closeConnection()
 		return nil, nil, err
 	}
@@ -107,9 +135,9 @@ func (p *BrowserProvider) connect(parent context.Context, t *domain.ApplicationT
 	return ctx, closeConnection, nil
 }
 
-func readPage(ctx context.Context) (pageSnapshot, error) {
+func readPage(ctx *rod.Page) (pageSnapshot, error) {
 	var page pageSnapshot
-	err := chromedp.Run(ctx, chromedp.Evaluate(inspectScript, &page))
+	err := evaluate(ctx, "("+inspectScript+")("+bindingsJSON+")", &page)
 	return page, err
 }
 
@@ -156,10 +184,12 @@ func hash(value any) string {
 
 func reviewHash(page *pageSnapshot) string {
 	return hash(struct {
-		Review   string
-		Values   map[string]string
-		Sections []domain.ApplicationSection
-	}{page.Review, page.Values, page.Sections})
+		Review    string
+		Values    map[string]string
+		Sections  []domain.ApplicationSection
+		Fields    []domain.ApplicationField
+		Questions []domain.ApplicationQuestion
+	}{page.Review, page.Values, page.Sections, page.Fields, page.Questions})
 }
 
 func inputHash(a *domain.ApplicationArtifact) string {
@@ -168,7 +198,8 @@ func inputHash(a *domain.ApplicationArtifact) string {
 		Answers     []domain.ApplicationAnswer
 		Attachments []domain.Attachment
 		Resume      json.RawMessage
-	}{a.Candidate, a.Answers, a.Attachments, a.ResumeJSON})
+		Overrides   map[string]json.RawMessage
+	}{a.Candidate, a.Answers, a.Attachments, a.ResumeJSON, a.CandidateOverrides})
 }
 
 func validation(message string) error {
@@ -188,12 +219,18 @@ func (p *BrowserProvider) save(state *workflowState) error {
 }
 
 func (p *BrowserProvider) load(a *domain.ApplicationArtifact) (workflowState, error) {
+	if a.ArtifactVersion != domain.ArtifactVersion || len(a.BrowserSteps) == 0 || a.Provider != domain.ProviderWorkday || a.Application.Provider != domain.ProviderWorkday {
+		return workflowState{}, validation("browser execution requires a prepared v2 Workday artifact")
+	}
+	if a.Application.Tenant == "" || a.Application.Site == "" || a.Application.ProviderJobID == "" {
+		return workflowState{}, validation("Workday requires tenant, site and Job identifiers")
+	}
 	if p.StatePath == "" {
 		return workflowState{}, validation("--state is required for browser fill and submit")
 	}
 	data, err := os.ReadFile(p.StatePath)
 	if os.IsNotExist(err) {
-		return workflowState{Target: a.Application, InputHash: inputHash(a), Steps: map[string]string{}}, nil
+		return workflowState{Target: a.Application, InputHash: inputHash(a), Steps: map[string]string{}, Uploads: map[string]string{}}, nil
 	}
 	if err != nil {
 		return workflowState{}, err
@@ -208,16 +245,13 @@ func (p *BrowserProvider) load(a *domain.ApplicationArtifact) (workflowState, er
 	if state.InputHash != inputHash(a) {
 		return state, validation("reviewed candidate/answers/attachments changed; use a new state file and review again")
 	}
-	if state.Steps == nil {
+	if state.Steps == nil || state.Uploads == nil {
 		return state, validation("invalid browser workflow state")
 	}
 	return state, nil
 }
 
 func approved(a *domain.ApplicationArtifact, i *domain.ApplicationInspection) bool {
-	if len(a.BrowserSteps) == 0 {
-		return a.Fingerprint == i.Fingerprint
-	}
 	for index := range a.BrowserSteps {
 		step := &a.BrowserSteps[index]
 		if step.Step == i.Step && step.Fingerprint == i.Fingerprint {
@@ -256,7 +290,7 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 			if err := p.save(&state); err != nil {
 				return nil, err
 			}
-			if err := chromedp.Run(browser, chromedp.Click(page.Controls["start"], chromedp.ByQuery), chromedp.Poll(`!document.querySelector('[data-automation-id="adventureButton"]')`, nil)); err != nil {
+			if err := clickAndWait(browser, page.Controls["start"], `!document.querySelector('[data-automation-id="adventureButton"]')`); err != nil {
 				return outcome("start_uncertain", &page), nil
 			}
 			continue
@@ -268,6 +302,13 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 			return outcome("already_submitted", &page), nil
 		}
 		if page.Controls["submit"] != "" {
+			for _, attachment := range req.Artifact.Attachments {
+				if state.Uploads[attachment.Kind] != attachment.SHA256 {
+					result := outcome("missing_answers", &page)
+					result.Receipt["detail"] = "document not uploaded: " + attachment.Kind
+					return result, nil
+				}
+			}
 			if len(state.Steps) == 0 {
 				return outcome("review_required", &page), nil
 			}
@@ -288,7 +329,13 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 			result.Receipt["inspection"] = i
 			return result, nil
 		}
-		if err := artifact.Validate(&req.Artifact, i); err != nil {
+		validationInspection := *i
+		validationInspection.AcceptsResume = true
+		validationInspection.AcceptsCoverLetter = true
+		if err := artifact.Validate(&req.Artifact, &validationInspection); err != nil {
+			return nil, err
+		}
+		if err := p.save(&state); err != nil {
 			return nil, err
 		}
 		payload, err := json.Marshal(req.Artifact)
@@ -296,19 +343,19 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 			return nil, err
 		}
 		var pending string
-		if err := chromedp.Run(browser, chromedp.Evaluate("("+fillScript+")("+string(payload)+")", &pending)); err != nil {
+		if err := evaluate(browser, "("+fillScript+")("+string(payload)+","+bindingsJSON+")", &pending); err != nil {
 			return nil, err
 		}
 		if strings.HasPrefix(pending, "row_added:") {
-			parts := strings.Split(pending, ":")
-			count, err := strconv.Atoi(parts[2])
-			if err != nil {
+			var added struct {
+				Selector string `json:"selector"`
+				Count    int    `json:"count"`
+			}
+			if err := json.Unmarshal([]byte(strings.TrimPrefix(pending, "row_added:")), &added); err != nil {
 				return nil, err
 			}
-			section := map[string]string{"work": "workExperienceSection", "education": "educationSection", "skills": "skillsSection", "languages": "languagesSection", "certificates": "certificationsSection"}[parts[1]]
-			row := map[string]string{"work": "workExperience", "education": "education", "skills": "skill", "languages": "language", "certificates": "certification"}[parts[1]]
-			expression := `document.querySelectorAll('[data-automation-id="` + section + `"] [data-automation-id="` + row + `"]').length > ` + strconv.Itoa(count)
-			if err := chromedp.Run(browser, chromedp.Poll(expression, nil, chromedp.WithPollingTimeout(5e9))); err != nil {
+			expression := `document.querySelectorAll(` + quote(added.Selector) + `).length > ` + fmt.Sprint(added.Count)
+			if err := browser.Timeout(5 * time.Second).Wait(rod.Eval("() => (" + expression + ")")); err != nil {
 				return nil, err
 			}
 			continue
@@ -331,26 +378,49 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 			result.Receipt["inspection"] = inspection(&req.Target, &updated)
 			return result, nil
 		}
+		if err := evaluate(browser, "("+fillScript+")("+string(payload)+","+bindingsJSON+",true)", &pending); err != nil {
+			return nil, err
+		}
+		if pending != "" {
+			result := outcome("missing_answers", &updated)
+			result.Receipt["detail"] = pending
+			return result, nil
+		}
 		for _, attachment := range req.Artifact.Attachments {
-			if updated.Values["file:"+attachment.Kind] == attachment.Filename {
-				continue
-			}
 			selector := updated.Controls["file:"+attachment.Kind]
 			if selector == "" {
-				return nil, validation("no upload control for " + attachment.Kind)
+				// The document may be requested on a later wizard step.
+				continue
 			}
-			absolute, err := os.Stat(attachment.Path)
+			fileInfo, err := os.Stat(attachment.Path)
 			if err != nil {
 				return nil, err
 			}
-			if absolute.IsDir() {
+			if fileInfo.IsDir() {
 				return nil, validation("attachment is a directory")
 			}
 			filePath, err := filepath.Abs(attachment.Path)
 			if err != nil {
 				return nil, err
 			}
-			if err := chromedp.Run(browser, chromedp.SetUploadFiles(selector, []string{filePath}, chromedp.ByQuery)); err != nil {
+			digest, err := fileDigest(browser, selector)
+			if err != nil {
+				return nil, err
+			}
+			if digest != attachment.SHA256 {
+				if err := upload(browser, selector, filePath); err != nil {
+					return nil, err
+				}
+				digest, err = fileDigest(browser, selector)
+				if err != nil {
+					return nil, err
+				}
+				if digest != attachment.SHA256 {
+					return nil, validation("browser did not retain the reviewed " + attachment.Kind + " document")
+				}
+			}
+			state.Uploads[attachment.Kind] = digest
+			if err := p.save(&state); err != nil {
 				return nil, err
 			}
 		}
@@ -361,7 +431,7 @@ func (p *BrowserProvider) Fill(ctx context.Context, req *domain.SubmitRequest) (
 		if err := p.save(&state); err != nil {
 			return nil, err
 		}
-		if err := chromedp.Run(browser, chromedp.Click(updated.Controls["next"], chromedp.ByQuery), chromedp.Poll(`document.querySelector('[data-automation-id="applyFlowPage"]')?.textContent.trim() !== `+quote(page.Step)+` || !!document.querySelector('[data-automation-id="applicationConfirmation"]')`, nil)); err != nil {
+		if err := clickAndWait(browser, updated.Controls["next"], `document.querySelector('[data-automation-id="applyFlowPage"]')?.textContent.trim() !== `+quote(page.Step)+` || !!document.querySelector('[data-automation-id="applicationConfirmation"]')`); err != nil {
 			return nil, err
 		}
 	}
@@ -387,6 +457,9 @@ func (p *BrowserProvider) Submit(ctx context.Context, req *domain.SubmitRequest)
 	if page.Receipt != "" {
 		return receipt(&page), nil
 	}
+	if page.Pending != "" {
+		return outcome(page.Pending, &page), nil
+	}
 	if state.SubmissionAttempted {
 		return outcome("submission_uncertain", &page), nil
 	}
@@ -407,7 +480,7 @@ func (p *BrowserProvider) Submit(ctx context.Context, req *domain.SubmitRequest)
 		return nil, err
 	}
 	// A submission click is never retried, even if the browser connection is lost.
-	if err := chromedp.Run(browser, chromedp.Click(page.Controls["submit"], chromedp.ByQuery), chromedp.Poll(`!!document.querySelector('[data-automation-id="applicationConfirmation"]')`, nil, chromedp.WithPollingTimeout(5e9))); err != nil {
+	if err := clickAndWait(browser, page.Controls["submit"], `!!document.querySelector('[data-automation-id="applicationConfirmation"],[data-automation-id="thankYouMessage"]')`); err != nil {
 		return outcome("submission_uncertain", &page), nil
 	}
 	page, err = readPage(browser)
@@ -427,4 +500,42 @@ func receipt(page *pageSnapshot) *domain.SubmissionResult {
 	result.ConfirmationURL = page.URL
 	result.Receipt["confirmation"] = page.Receipt
 	return result
+}
+
+func evaluate(page *rod.Page, expression string, out any) error {
+	result, err := page.Eval("() => (" + expression + ")")
+	if err != nil {
+		return err
+	}
+	if out == nil {
+		return nil
+	}
+	return result.Value.Unmarshal(out)
+}
+
+func clickAndWait(page *rod.Page, selector, expression string) error {
+	element, err := page.Element(selector)
+	if err != nil {
+		return err
+	}
+	if err := element.Click(proto.InputMouseButtonLeft, 1); err != nil {
+		return err
+	}
+	return page.Timeout(5 * time.Second).Wait(rod.Eval("() => (" + expression + ")"))
+}
+
+func upload(page *rod.Page, selector, path string) error {
+	element, err := page.Element(selector)
+	if err != nil {
+		return err
+	}
+	return element.SetFiles([]string{path})
+}
+
+func fileDigest(page *rod.Page, selector string) (string, error) {
+	result, err := page.Eval(`async (selector) => {const file=document.querySelector(selector).files[0];if(!file)return '';const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');}`, selector)
+	if err != nil {
+		return "", err
+	}
+	return result.Value.Str(), nil
 }

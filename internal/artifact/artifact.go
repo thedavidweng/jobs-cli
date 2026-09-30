@@ -141,16 +141,23 @@ func Validate(a *domain.ApplicationArtifact, inspection *domain.ApplicationInspe
 	var problems []string
 	attachmentKinds := attachmentKinds(a)
 	for _, field := range inspection.Fields {
-		if IsFileField(field) {
+		if IsFileField(&field) {
 			if field.Required {
 				if _, ok := attachmentKinds[strings.ToLower(field.Name)]; !ok {
-					problems = append(problems, fieldLabel(field))
+					problems = append(problems, fieldLabel(&field))
 				}
 			}
 			continue
 		}
-		if field.Required && strings.TrimSpace(a.Candidate.Value(field.Name)) == "" {
-			problems = append(problems, fieldLabel(field))
+		value := strings.TrimSpace(a.Candidate.Value(field.Name))
+		if value != "" && len(field.Options) > 0 {
+			question := domain.ApplicationQuestion{Type: field.Type, Options: field.Options}
+			if problem := validateAnswer(&question, value); problem != "" {
+				problems = append(problems, fieldLabel(&field)+": "+problem)
+			}
+		}
+		if field.Required && value == "" {
+			problems = append(problems, fieldLabel(&field))
 		}
 	}
 	answers := AnswerMap(a)
@@ -307,7 +314,7 @@ func attachmentKinds(a *domain.ApplicationArtifact) map[string]bool {
 	return kinds
 }
 
-func IsFileField(field domain.ApplicationField) bool {
+func IsFileField(field *domain.ApplicationField) bool {
 	if strings.EqualFold(strings.TrimSpace(field.Type), "file") {
 		return true
 	}
@@ -338,7 +345,7 @@ func ContentTypeFor(path string) string {
 	}
 }
 
-func fieldLabel(field domain.ApplicationField) string {
+func fieldLabel(field *domain.ApplicationField) string {
 	if field.Label != "" {
 		return field.Label
 	}

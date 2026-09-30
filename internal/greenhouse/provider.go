@@ -207,7 +207,7 @@ func (p *Provider) client() *http.Client {
 
 func writeApplication(writer *multipart.Writer, app *domain.ApplicationArtifact, fields []domain.ApplicationField, questions []domain.ApplicationQuestion, acceptsResume, acceptsCover bool) error {
 	for _, field := range fields {
-		if artifact.IsFileField(field) {
+		if artifact.IsFileField(&field) {
 			continue
 		}
 		value := strings.TrimSpace(app.Candidate.Value(field.Name))

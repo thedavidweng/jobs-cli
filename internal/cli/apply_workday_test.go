@@ -3,13 +3,14 @@ package cli_test
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/chromedp/chromedp"
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/thedavidweng/jobs-cli/v2/internal/domain"
 	"github.com/thedavidweng/jobs-cli/v2/internal/testutil"
 	"github.com/thedavidweng/jobs-cli/v2/internal/workday"
@@ -27,37 +28,36 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 				page = `<label for="phone">Mobile phone</label><input id="phone" data-automation-id="phoneNumber" required>` + page
 			}
 			page = `<div data-automation-id="workExperienceSection"><div data-automation-id="workExperience"><input data-automation-id="company" required><input data-automation-id="jobTitle" required><input data-automation-id="startDate" type="month"></div><button data-automation-id="addButton" onclick="const row=this.parentNode.querySelector('[data-automation-id=workExperience]').cloneNode(true);for(const input of row.querySelectorAll('input'))input.value='';this.before(row)">Add work</button></div><div data-automation-id="educationSection"><div data-automation-id="education"><input data-automation-id="school" required><select data-automation-id="degree" required><option value=""></option><option value="BSc">Bachelor</option></select></div></div><label for="authorization">` + employer + ` Work authorization</label><select id="authorization" required><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select>` + page
-			page += `<label for="resume">Resume</label><input id="resume" data-automation-id="resume" type="file" required><script>
+			page = `<div id="details"><label for="website">Website</label><input id="website" data-automation-id="website" value="saved-old"><label for="country">Country</label><select id="country" data-automation-id="country" required><option value=""></option><option value="CA">Canada</option></select>` + page + `<label for="resume">Resume</label><input id="resume" data-automation-id="resume" type="file" required></div><script>
    const next=document.querySelector('[data-automation-id="bottom-navigation-next-button"]');let stage=0;
-   next.onclick=()=>{if(stage++===0){document.querySelector('h1').textContent='Questions';document.body.insertAdjacentHTML('beforeend','<label for="consent">I agree to '+` + fmt.Sprintf("%q", employer) + `+' processing my application</label><input id="consent" type="checkbox" required>');}else{document.querySelector('h1').textContent='Review';next.remove();document.body.insertAdjacentHTML('beforeend','<button data-automation-id="submitButton" onclick="receipt()">Submit</button>')}}
+   document.body.prepend(document.querySelector('h1'));document.body.append(next);
+   next.onclick=()=>{if(stage++===0){window.savedName=document.querySelector('#first').value;window.savedWebsite=document.querySelector('#website').value;window.savedRows=document.querySelectorAll('[data-automation-id=workExperience]').length;document.querySelector('#details').remove();document.querySelector('h1').textContent='Questions';document.body.insertAdjacentHTML('beforeend','<label for="consent">I agree to '+` + fmt.Sprintf("%q", employer) + `+' processing my application</label><input id="consent" type="checkbox" required><fieldset><legend>Sponsorship needed?</legend><label><input type="radio" name="sponsorship" value="yes" required>Yes</label><label><input type="radio" name="sponsorship" value="no" required>No</label></fieldset>');}else{document.querySelector('h1').textContent='Review';next.remove();document.body.insertAdjacentHTML('beforeend','<p id="review">'+window.savedName+'</p><button data-automation-id="submitButton" onclick="receipt()">Submit</button>')}}
    </script>`
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, page) }))
 			defer server.Close()
-			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			launch := launcher.New().Bin(executable).Headless(true).Leakless(false)
+			endpoint, err := launch.Launch()
 			if err != nil {
 				t.Fatal(err)
 			}
-			address, ok := listener.Addr().(*net.TCPAddr)
-			if !ok {
-				t.Fatal("expected TCP address")
-			}
-			port := address.Port
-			if err := listener.Close(); err != nil {
+			defer launch.Cleanup()
+			defer launch.Kill()
+			connection := rod.New().Context(context.Background()).ControlURL(endpoint)
+			if err := connection.Connect(); err != nil {
 				t.Fatal(err)
 			}
-			alloc, cancel := chromedp.NewExecAllocator(context.Background(), append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(executable), chromedp.Flag("remote-debugging-port", fmt.Sprint(port)))...)
-			defer cancel()
-			ctx, closeTab := chromedp.NewContext(alloc)
-			defer closeTab()
-			if err := chromedp.Run(ctx, chromedp.Navigate(server.URL+"/"+employer+"/site/job/JR1")); err != nil {
+			ctx, err := connection.Page(proto.TargetCreateTarget{URL: server.URL + "/" + employer + "/site/job/JR1"})
+			if err != nil {
 				t.Fatal(err)
 			}
-			endpoint := fmt.Sprintf("http://127.0.0.1:%d", port)
-			tabID := string(chromedp.FromContext(ctx).Target.TargetID)
+			if err := ctx.WaitLoad(); err != nil {
+				t.Fatal(err)
+			}
+			tabID := string(ctx.TargetID)
 			target := &domain.ApplicationTarget{URL: server.URL + "/" + employer + "/site/job/JR1", Provider: domain.ProviderWorkday, Tenant: employer, Site: "site", ProviderJobID: "JR1"}
 			reg := testutil.NewRegistry(map[domain.Source]domain.SourceAdapter{domain.SourceIndeed: &testutil.FakeSource{Job: fakeJob(domain.SourceIndeed, "1")}}, &testutil.FakeResolver{Target: target}, map[domain.ApplicationProvider]domain.ApplyProvider{domain.ProviderWorkday: workday.NewProvider()})
 			h := newHarness(t).useRegistry(reg)
-			manifest := h.writeFile("candidate.json", `{"candidate":{"first_name":"Ada","email":"ada@example.com","phone":"+1 555 0100","work":[{"name":"Engine","position":"Programmer","startDate":"1842-01"},{"name":"Analytical","position":"Writer","startDate":"1843-02"}],"education":[{"institution":"University","studyType":"Bachelor"}]},"answers":[{"question_id":"authorization","value":"yes"},{"question_id":"consent","value":true}]}`)
+			manifest := h.writeFile("candidate.json", `{"candidate":{"first_name":"Ada","email":"ada@example.com","phone":"+1 555 0100","website":"","address":{"country":"CA"},"work":[{"name":"Engine","position":"Programmer","startDate":"1842-01"},{"name":"Analytical","position":"Writer","startDate":"1843-02"}],"education":[{"institution":"University","studyType":"Bachelor"}]},"answers":[{"question_id":"authorization","value":"yes"},{"question_id":"consent","value":true},{"question_id":"sponsorship","value":"no"}]}`)
 			flags := []string{"--json", "apply", "--browser-endpoint", endpoint, "--browser-tab", tabID, "--state", h.dir + "/state.json"}
 			run := func(args ...string) (string, int) {
 				out, _, code := h.run(append(append([]string{}, flags...), args...)...)
@@ -70,23 +70,33 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 				t.Fatalf("prepare: %s", out)
 			}
 			var value string
-			if err := chromedp.Run(ctx, chromedp.Value("#first", &value)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.querySelector("#first").value`, &value); err != nil {
 				t.Fatal(err)
 			}
 			if value != "" {
 				t.Fatal("prepare mutated the page")
 			}
+			out, code = run("fill", "--artifact", path, "--confirm", "--state", h.dir+"/missing/state.json")
+			if code == 0 {
+				t.Fatalf("unwritable state accepted: %s", out)
+			}
+			if err := fixtureEvaluate(ctx, `document.querySelector("#first").value`, &value); err != nil {
+				t.Fatal(err)
+			}
+			if value != "" {
+				t.Fatal("unwritable state allowed writes")
+			}
 			out, code = run("fill", "--artifact", path, "--confirm", "--read-only")
 			docRead := decodeEnvelope(t, out)
 			requireCode(t, &docRead, "READ_ONLY_VIOLATION", 4, code)
-			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.body.insertAdjacentHTML('afterbegin','<div data-automation-id="signInForm">Sign in</div>')`, nil)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.body.insertAdjacentHTML('afterbegin','<div data-automation-id="signInForm">Sign in</div>')`, nil); err != nil {
 				t.Fatal(err)
 			}
 			out, code = run("fill", "--artifact", path, "--confirm")
 			if code != 0 || decodeEnvelope(t, out).Data["status"] != "login_required" {
 				t.Fatalf("login pause: %s", out)
 			}
-			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('[data-automation-id="signInForm"]').remove()`, nil)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.querySelector('[data-automation-id="signInForm"]').remove()`, nil); err != nil {
 				t.Fatal(err)
 			}
 			out, code = run("fill", "--artifact", path)
@@ -96,20 +106,20 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			if code != 0 || decodeEnvelope(t, out).Data["dry_run"] != true {
 				t.Fatalf("dry run: %s", out)
 			}
-			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('label[for=authorization]').textContent='Changed authorization wording'`, nil)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.querySelector('label[for=authorization]').textContent='Changed authorization wording'`, nil); err != nil {
 				t.Fatal(err)
 			}
 			out, code = run("fill", "--artifact", path, "--confirm")
 			if code != 0 || decodeEnvelope(t, out).Data["status"] != "requirements_changed" {
 				t.Fatalf("stale questions: %s", out)
 			}
-			if err := chromedp.Run(ctx, chromedp.Value("#first", &value)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.querySelector("#first").value`, &value); err != nil {
 				t.Fatal(err)
 			}
 			if value != "" {
 				t.Fatal("stale artifact mutated browser")
 			}
-			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('label[for=authorization]').textContent=`+fmt.Sprintf("%q", employer+" Work authorization"), nil)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.querySelector('label[for=authorization]').textContent=`+fmt.Sprintf("%q", employer+" Work authorization"), nil); err != nil {
 				t.Fatal(err)
 			}
 			out, code = run("fill", "--artifact", path, "--confirm")
@@ -124,35 +134,59 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			if code != 0 || decodeEnvelope(t, out).Data["status"] != "review_ready" {
 				t.Fatalf("fill: %s", out)
 			}
-			if err := chromedp.Run(ctx, chromedp.Value("#first", &value)); err != nil {
+			if err := fixtureEvaluate(ctx, `window.savedName`, &value); err != nil {
 				t.Fatal(err)
 			}
 			if value != "Ada" {
-				t.Fatalf("first name: %s", value)
+				t.Fatalf("reviewed name: %s", value)
+			}
+			if err := fixtureEvaluate(ctx, `window.savedWebsite`, &value); err != nil {
+				t.Fatal(err)
+			}
+			if value != "" {
+				t.Fatal("explicit empty website retained saved value")
 			}
 			var rows int
-			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelectorAll('[data-automation-id="workExperience"]').length`, &rows)); err != nil {
+			if err := fixtureEvaluate(ctx, `window.savedRows`, &rows); err != nil {
 				t.Fatal(err)
 			}
 			if rows != 2 {
 				t.Fatalf("work rows: %d", rows)
+			}
+			if err := fixtureEvaluate(ctx, `document.querySelector('input[name=sponsorship][value=yes]').click()`, nil); err != nil {
+				t.Fatal(err)
+			}
+			out, code = run("submit", "--artifact", path, "--confirm")
+			radioChanged := decodeEnvelope(t, out)
+			requireCode(t, &radioChanged, "VALIDATION_FAILED", 7, code)
+			if err := fixtureEvaluate(ctx, `document.querySelector('input[name=sponsorship][value=no]').click()`, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := fixtureEvaluate(ctx, `document.querySelector('#consent').required=false`, nil); err != nil {
+				t.Fatal(err)
+			}
+			out, code = run("submit", "--artifact", path, "--confirm")
+			requiredChanged := decodeEnvelope(t, out)
+			requireCode(t, &requiredChanged, "VALIDATION_FAILED", 7, code)
+			if err := fixtureEvaluate(ctx, `document.querySelector('#consent').required=true`, nil); err != nil {
+				t.Fatal(err)
 			}
 			h.writeFile("resume.pdf", "changed document")
 			out, code = run("submit", "--artifact", path, "--confirm")
 			changedFile := decodeEnvelope(t, out)
 			requireCode(t, &changedFile, "APPLICATION_INCOMPLETE", 7, code)
 			h.writeFile("resume.pdf", "fixture resume")
-			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('#email').value='changed@example.com'`, nil)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.querySelector('#review').textContent='Changed applicant'`, nil); err != nil {
 				t.Fatal(err)
 			}
 			out, code = run("submit", "--artifact", path, "--confirm")
 			stale := decodeEnvelope(t, out)
 			requireCode(t, &stale, "VALIDATION_FAILED", 7, code)
-			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('#email').value='ada@example.com'`, nil)); err != nil {
+			if err := fixtureEvaluate(ctx, `document.querySelector('#review').textContent='Ada'`, nil); err != nil {
 				t.Fatal(err)
 			}
 			if employer == "bank-b" {
-				if err := chromedp.Run(ctx, chromedp.Evaluate(`window.attempts=0;window.receipt=()=>{window.attempts++}`, nil)); err != nil {
+				if err := fixtureEvaluate(ctx, `window.attempts=0;window.receipt=()=>{window.attempts++}`, nil); err != nil {
 					t.Fatal(err)
 				}
 				out, code = run("submit", "--artifact", path, "--confirm")
@@ -164,7 +198,7 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 					t.Fatalf("retry uncertain: %s", out)
 				}
 				var attempts int
-				if err := chromedp.Run(ctx, chromedp.Evaluate(`window.attempts`, &attempts)); err != nil {
+				if err := fixtureEvaluate(ctx, `window.attempts`, &attempts); err != nil {
 					t.Fatal(err)
 				}
 				if attempts != 1 {
@@ -178,4 +212,15 @@ func TestWorkdayBrowserInspectAndFillAtReview(t *testing.T) {
 			}
 		})
 	}
+}
+
+func fixtureEvaluate(page *rod.Page, expression string, out any) error {
+	result, err := page.Eval("expression => eval(expression)", expression)
+	if err != nil {
+		return err
+	}
+	if out == nil {
+		return nil
+	}
+	return result.Value.Unmarshal(out)
 }

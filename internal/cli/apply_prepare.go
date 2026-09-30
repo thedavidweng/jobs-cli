@@ -91,19 +91,20 @@ func (a *App) runApplyPrepare(cmd *cobra.Command, f *applyPrepareFlags, jobID st
 
 	prepared := domain.ApplicationArtifact{
 		PendingAction: inspection.PendingAction, RequirementsValidated: inspection.PendingAction == "",
-		SchemaVersion:   domain.ArtifactSchemaVersion,
-		ArtifactVersion: domain.ArtifactVersion,
-		GeneratedAt:     time.Now().UTC().Format(time.RFC3339),
-		JobID:           job.ID,
-		JobTitle:        job.Title,
-		Employer:        job.Employer,
-		Provider:        target.Provider,
-		Application:     target,
-		Fingerprint:     inspection.Fingerprint,
-		ResumeJSON:      input.ResumeJSON,
-		Candidate:       input.Candidate,
-		Answers:         input.Answers,
-		Attachments:     attachments,
+		SchemaVersion:      domain.ArtifactSchemaVersion,
+		ArtifactVersion:    domain.ArtifactVersion,
+		GeneratedAt:        time.Now().UTC().Format(time.RFC3339),
+		JobID:              job.ID,
+		JobTitle:           job.Title,
+		Employer:           job.Employer,
+		Provider:           target.Provider,
+		Application:        target,
+		Fingerprint:        inspection.Fingerprint,
+		ResumeJSON:         input.ResumeJSON,
+		CandidateOverrides: input.candidateKeys,
+		Candidate:          input.Candidate,
+		Answers:            input.Answers,
+		Attachments:        attachments,
 	}
 
 	if target.Provider == domain.ProviderWorkday {
@@ -128,7 +129,12 @@ func (a *App) runApplyPrepare(cmd *cobra.Command, f *applyPrepareFlags, jobID st
 		prepared.BrowserSteps = steps
 	}
 	if inspection.PendingAction == "" {
-		if verr := artifact.Validate(&prepared, inspection); verr != nil {
+		validationInspection := *inspection
+		if target.Provider == domain.ProviderWorkday {
+			validationInspection.AcceptsResume = true
+			validationInspection.AcceptsCoverLetter = true
+		}
+		if verr := artifact.Validate(&prepared, &validationInspection); verr != nil {
 			return verr
 		}
 	}
@@ -251,8 +257,12 @@ func mergePrepareInput(base, override *prepareInput) {
 	if overrides == nil {
 		_ = json.Unmarshal(overrideData, &overrides)
 	}
+	if base.candidateKeys == nil {
+		base.candidateKeys = map[string]json.RawMessage{}
+	}
 	for key, value := range overrides {
 		values[key] = value
+		base.candidateKeys[key] = value
 	}
 	merged, _ := json.Marshal(values)
 	_ = json.Unmarshal(merged, &base.Candidate)

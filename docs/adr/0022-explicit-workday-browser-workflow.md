@@ -2,7 +2,7 @@
 
 Workday uses one Application Provider parameterized by tenant, career site and Job. This reopens the original v1 boundary that left the entire wizard outside jobs-cli; ADR-0001, 0002, 0009 and 0018 remain in force.
 
-The standalone binary connects through chromedp to an explicit loopback CDP endpoint and existing tab ID. The tab URL must match the employer origin and Job path. Browser credentials stay in the user's browser. Disconnecting must preserve the tab. The CLI does not create accounts or infer questionnaire answers.
+The standalone binary connects through Rod to an explicit loopback CDP endpoint and existing tab ID. The tab URL must match the employer origin and Job path. Browser credentials stay in the user's browser. Disconnecting must preserve the tab. The CLI does not create accounts or infer questionnaire answers.
 
 JSON Resume v1.0.0 is validated using its vendored official schema. It supplies a base Candidate; explicit manifest keys override that base, including empty values. Complete names and date precision are preserved. Raw resume data remains reviewable in artifact v2. Version 1 native artifacts remain readable. Attachments are separate files with content digests; CLI file flags override the same attachment kind.
 
