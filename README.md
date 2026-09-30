@@ -114,6 +114,8 @@ jobs-cli apply submit --artifact artifact.json --confirm
 
 Indeed searches one country at a time. End `--location` with a US state, Canadian province, or country, pass `--country`, or set a default in the [configuration](COMMANDS.md#configuration). Otherwise the Indeed results fail with `MARKET_REQUIRED`. Add `--json` to any command for machine-readable output.
 
+Indeed discovery requires no login. Indeed-hosted applications resolve with `browser_required=true` and an application URL for you to continue manually in a browser; native submission reports `BROWSER_REQUIRED`. [Indeed's Job Seeker Terms](https://www.indeed.com/legal?co=US&hl=en) prohibit automating Indeed Apply outside its official vendors and tooling. Any proposal to automate this flow must first establish a new architecture decision (ADR) and review the terms; browser extensions, native-messaging hosts, and DOM auto-submit are outside the current product scope.
+
 ### Uninstall
 
 ```shell

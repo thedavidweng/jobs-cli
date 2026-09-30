@@ -376,7 +376,7 @@ For external-ATS jobs, Indeed is discovery only.
 
 The CLI resolves `recruit.viewJobUrl`, detects the application provider, and hands the job to that provider.
 
-Direct Indeed Apply submission is not part of the initial native application surface because it requires candidate OAuth/session/resume flows that were not implemented by the completed research.
+Direct Indeed Apply submission is outside the native application surface. Its browser handoff, terms constraint, and ADR requirement are documented under [Indeed Apply](#indeed-apply).
 
 When a listing is Indeed Apply-only and no native implementation exists, the CLI must expose this clearly (`NATIVE_APPLY_UNSUPPORTED` / `BROWSER_REQUIRED` as appropriate) instead of attempting hidden browser automation.
 
@@ -970,14 +970,13 @@ The older `jamerst/JobHunt` Indeed implementation is useful for query-shape cont
 
 #### Indeed Apply
 
-Direct Indeed Apply is not solved by the current native client.
+Indeed-hosted applications resolve with `browser_required=true` and the application URL for a human to continue manually in a browser. Native submission returns the stable `BROWSER_REQUIRED` error. The CLI does not manage an Indeed candidate session. External ATS jobs resolve and continue through their Application Provider.
 
-The research found that direct Indeed candidate submission requires authenticated candidate/session/OAuth and resume flows.
+[Indeed's Job Seeker Terms](https://www.indeed.com/legal?co=US&hl=en) prohibit automation, scripting, or bots that automate Indeed Apply outside Indeed's official vendors and tooling (reviewed September 30, 2026). A browser handoff is not approval for third-party automated submission.
 
-For the first implementation:
+Any proposal to automate Indeed Apply must start with a new ADR deciding the change to the single-binary, no-browser-automation architecture and include a terms review. A companion browser extension, native-messaging host, or DOM auto-submit is outside the current product scope. LazyApply is prior art and a UX reference only; no public command interface was found in the investigation.
 
-- external ATS jobs resolve and continue through their ATS provider;
-- Indeed-native applications report unsupported/browser-required as appropriate.
+Public Indeed application APIs exist, including OAuth / Log in with Indeed, Send Candidates, and Indeed Apply integrations, but these are Partner / ATS / employer integration surfaces. The investigation did not find a documented public API for a third-party job-seeker client to submit an arbitrary Indeed-hosted application on the user's behalf. Among the surveyed auto-apply implementations, submission was browser/DOM based; this is not a claim about every project or every API.
 
 The investigation estimated that a large majority of relevant technical listings encountered during testing resolve externally, but this percentage must not be treated as a guaranteed platform invariant.
 
