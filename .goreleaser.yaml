@@ -69,9 +69,16 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/thedavidweng/jobs-cli
     description: Agent-friendly CLI for job discovery and applications
-    hooks:
-      pre:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/jobs-cli"]
-          end
+    # GoReleaser's `hooks` still emit Homebrew's deprecated `preflight`/
+    # `postflight` stanzas (upstream goreleaser/goreleaser#6873). Emitting the
+    # modern `postflight_steps` DSL via `custom_block` avoids the deprecation
+    # warning. GoReleaser places `custom_block` at the top of the cask, so the
+    # tap's `normalize_cask_style.py` moves it to the correct stanza position.
+    # The `{{ ... }}` escaping keeps the literal `{{staged_path}}` Homebrew
+    # template token from being evaluated by GoReleaser.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ `{{staged_path}}` }}/jobs-cli"]
+        end
+      end
