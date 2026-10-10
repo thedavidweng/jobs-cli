@@ -50,14 +50,14 @@ jobs:
             esac
           done
 
-          if [ "$UPDATE_TYPE" = "version-update:semver-major" ]; then
-            echo "major updates require manual review"
-            exit 0
-          fi
+          case "$UPDATE_TYPE" in
+            version-update:semver-patch|version-update:semver-minor) ;;
+            *) echo "major or unclassified updates require manual review"; exit 0 ;;
+          esac
 
           eligible=false
           reason=""
-          if { [ "$ALERT_STATE" = "OPEN" ] || [ "$ALERT_STATE" = "FIXED" ]; } && [ -n "$UPDATE_TYPE" ]; then
+          if { [ "$ALERT_STATE" = "OPEN" ] || [ "$ALERT_STATE" = "FIXED" ]; }; then
             eligible=true
             reason="security-update"
           fi
