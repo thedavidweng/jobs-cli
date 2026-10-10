@@ -9,8 +9,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
+    timeout-minutes: 60
     name: Check (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -21,8 +26,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: jdx/mise-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
       - name: Enable real-browser application tests
         if: runner.os == 'Linux'
         run: |
@@ -43,17 +50,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # Only the pinned workflow checker: no Go toolchain or app runtime in this job.
-      - name: Install jactionlint
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          cache: false
-          install_args: jactionlint
-
-      - name: Problem matcher
-        run: echo "::add-matcher::.github/jactionlint-matcher.json"
-
       - name: jactionlint
-        run: |
-          jactionlint -version
-          jactionlint
+        uses: jdx/jactionlint@2462f925040c2aa1c88714dc85bc12d869cc4998 # v2.0.2
+        with:
+          profile: default

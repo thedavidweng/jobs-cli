@@ -1,7 +1,8 @@
 name: Dependabot auto-merge
 
 on:
-  pull_request_target:
+  # Metadata-only: same-repository Dependabot gate; no checkout or PR code.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
 
 permissions: {}
 
@@ -38,9 +39,10 @@ jobs:
           ALERT_STATE: ${{ steps.meta.outputs.alert-state }}
         run: |
           set -euo pipefail
-          deny='googleapis/release-please-action dependabot/fetch-metadata'
+          deny='googleapis/release-please-action dependabot/fetch-metadata jdx/jactionlint github/codeql-action zizmorcore/zizmor-action actions/dependency-review-action trufflesecurity/trufflehog sigstore/cosign-installer anchore/sbom-action'
+          dep_names="${DEP_NAMES// /}"
           for blocked in $deny; do
-            case ",${DEP_NAMES}," in
+            case ",${dep_names}," in
               *",${blocked},"*)
                 echo "skip auto-merge (denylist): $blocked"
                 exit 0
@@ -48,9 +50,14 @@ jobs:
             esac
           done
 
+          if [ "$UPDATE_TYPE" = "version-update:semver-major" ]; then
+            echo "major updates require manual review"
+            exit 0
+          fi
+
           eligible=false
           reason=""
-          if [ "$ALERT_STATE" = "OPEN" ] || [ "$ALERT_STATE" = "FIXED" ]; then
+          if { [ "$ALERT_STATE" = "OPEN" ] || [ "$ALERT_STATE" = "FIXED" ]; } && [ -n "$UPDATE_TYPE" ]; then
             eligible=true
             reason="security-update"
           fi
@@ -59,7 +66,7 @@ jobs:
             reason="semver-patch"
           fi
           if [ "$PKG_ECOSYSTEM" = "github-actions" ] || [ "$PKG_ECOSYSTEM" = "github_actions" ]; then
-            if [ "$UPDATE_TYPE" != "version-update:semver-major" ]; then
+            if [ "$UPDATE_TYPE" = "version-update:semver-patch" ] || [ "$UPDATE_TYPE" = "version-update:semver-minor" ]; then
               eligible=true
               reason="github-actions-non-major"
             fi
