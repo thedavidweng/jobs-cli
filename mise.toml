@@ -2,7 +2,6 @@
 go = "1.27.1"
 gofumpt = "0.12.0"
 golangci-lint = "2.14.0"
-jactionlint = "1.8.2"
 
 [tasks.build]
 run = "go build ./..."
@@ -17,4 +16,4 @@ run = "gofumpt -extra -w ."
 run = "golangci-lint run"
 
 [tasks.check]
-depends = ["fmt", "build", "test", "lint"]
+run = ["mise run fmt", "mise run build ::: test ::: lint"]
