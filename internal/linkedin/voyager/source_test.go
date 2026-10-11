@@ -119,6 +119,49 @@ func TestSearchSendsPersistedQueryAndAuthenticatedHeaders(t *testing.T) {
 	}
 }
 
+func TestSearchParsesJobCardUnionWrapper(t *testing.T) {
+	store := testStore(t)
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		body := `{"data":{"jobsDashJobCardsByJobSearch":{"paging":{"total":1},"elements":[{"jobCardUnion":{"jobPostingCard":{"jobPostingUrn":"urn:li:fsd_jobPosting:4209649973","jobPostingTitle":"Software Engineer","primaryDescription":{"text":"Tech Company Inc."},"secondaryDescription":{"text":"San Francisco, CA (Remote)"},"jobPosting":{"entityUrn":"urn:li:fsd_jobPosting:4209649973"}}}}]}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	source := &Source{Client: client, Sessions: store}
+	result, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "go", Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Jobs) != 1 {
+		t.Fatalf("jobs = %#v", result.Jobs)
+	}
+	job := result.Jobs[0]
+	if job.SourceJobID != "4209649973" || job.Title != "Software Engineer" || job.Employer != "Tech Company Inc." {
+		t.Fatalf("job = %#v", job)
+	}
+	if !job.Remote {
+		t.Fatalf("job should be remote: %#v", job)
+	}
+}
+
+func TestSearchResolvesIncludedEntityReferences(t *testing.T) {
+	store := testStore(t)
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		body := `{"data":{"jobsDashJobCardsByJobSearch":{"paging":{"total":1},"elements":[{"*jobPosting":"urn:li:fsd_jobPosting:9999"}]}},"included":[{"entityUrn":"urn:li:fsd_jobPosting:9999","title":"Go Developer","formattedLocation":"Remote"}]}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	source := &Source{Client: client, Sessions: store}
+	result, err := source.Search(context.Background(), &domain.SearchRequest{Keywords: "go", Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Jobs) != 1 {
+		t.Fatalf("jobs = %#v", result.Jobs)
+	}
+	job := result.Jobs[0]
+	if job.SourceJobID != "9999" || job.Title != "Go Developer" || job.Location != "Remote" {
+		t.Fatalf("job = %#v", job)
+	}
+}
+
 func TestDetailAndEasyApplyParsing(t *testing.T) {
 	store := testStore(t)
 	calls := 0
