@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1](https://github.com/thedavidweng/jobs-cli/compare/v2.1.0...v2.1.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **linkedin:** handle jobCardUnion and included-entity reference shapes in Voyager search ([bc44117](https://github.com/thedavidweng/jobs-cli/commit/bc44117812e368cabd0ea2aed99c24e424a1d64d))
+* **linkedin:** handle jobCardUnion and included-entity reference shapes in Voyager search ([3fee7ae](https://github.com/thedavidweng/jobs-cli/commit/3fee7aee96aec411d4f8e11336c0588ca0e30e2a))
+
 ## [2.1.0](https://github.com/thedavidweng/jobs-cli/compare/v2.0.2...v2.1.0) (2026-09-30)
 
 
