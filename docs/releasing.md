@@ -52,6 +52,8 @@ slices and Universal. Its seven archives include the unchanged
 `jobs-cli_darwin_universal.tar.gz` filename, which remains the generated Cask's
 download target. Native archive IDs and the Universal archive ID are separate
 so GoReleaser cannot silently select a single-architecture download for the Cask.
+The Cask also retains its existing Linux amd64 and arm64 downloads. Native
+Darwin archives use a separate ID to exclude them from Cask selection.
 GoReleaser 2.15.4 excludes non-replacing Universal binaries from Casks, even
 with an explicit archive ID. A separate Darwin build feeds the replacing
 Universal binary while the native build remains available for native archives.

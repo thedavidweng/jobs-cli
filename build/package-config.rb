@@ -3,7 +3,7 @@ require "json"
 
 mode, output = ARGV
 abort "usage: package-config.rb baseline|current OUTPUT" unless %w[baseline current].include?(mode) && output
-config = YAML.load_file(".goreleaser.yaml")
+config = YAML.load_file(".goreleaser.yaml", aliases: true)
 config["dist"] = "dist/#{mode}"
 commit_date = IO.popen(["git", "show", "-s", "--format=%cI", "HEAD"], &:read).strip
 config.fetch("builds").each do |build|
@@ -11,6 +11,7 @@ config.fetch("builds").each do |build|
 end
 if mode == "baseline"
   config["builds"] = [config.fetch("builds").first]
+  config.fetch("builds").first["goos"] = ["linux", "darwin", "windows"]
   config.fetch("builds").each do |build|
     build.fetch("flags").delete("-trimpath")
   end

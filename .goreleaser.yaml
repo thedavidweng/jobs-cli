@@ -6,11 +6,11 @@ before:
     - go mod tidy
 
 builds:
-  - env:
+  - &native
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
       - windows
     goarch:
       - amd64
@@ -25,26 +25,14 @@ builds:
       - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
       - -X {{.ModulePath}}/internal/version.Date={{.Date}}
       - -X {{.ModulePath}}/internal/version.BuiltBy=goreleaser
-  # Cask generation only accepts replacing Universal binaries. Use separate
-  # Darwin inputs so replacement does not remove the native download artifacts.
-  - id: universal-slices
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    main: ./cmd/jobs-cli
-    binary: jobs-cli
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
-      - -X {{.ModulePath}}/internal/version.Version={{.Version}}
-      - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
-      - -X {{.ModulePath}}/internal/version.Date={{.Date}}
-      - -X {{.ModulePath}}/internal/version.BuiltBy=goreleaser
+  - <<: *native
+    id: darwin-native
+    goos: [darwin]
+  # Cask generation only accepts replacing Universal binaries. Replace separate
+  # Darwin inputs so the native downloads remain available.
+  - <<: *native
+    id: universal-slices
+    goos: [darwin]
 
 universal_binaries:
   - id: jobs-cli-universal
@@ -52,7 +40,8 @@ universal_binaries:
     replace: true
 
 archives:
-  - id: native
+  - &native_archive
+    id: native
     ids: [jobs-cli]
     formats:
       - tar.gz
@@ -66,6 +55,9 @@ archives:
       - goos: windows
         formats:
           - zip
+  - <<: *native_archive
+    id: darwin-native
+    ids: [darwin-native]
   - id: universal
     ids: [jobs-cli-universal]
     formats: [tar.gz]
@@ -91,7 +83,7 @@ release:
 
 homebrew_casks:
   - name: jobs-cli
-    ids: [universal]
+    ids: [native, universal]
     binaries:
       - jobs-cli
     repository:

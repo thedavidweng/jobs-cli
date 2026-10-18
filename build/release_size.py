@@ -4,14 +4,13 @@
 import hashlib
 import json
 from pathlib import Path
-import subprocess
 import sys
 import tarfile
 import zipfile
 
 TARGETS = {
-    "darwin_x86_64": "jobs-cli_darwin_amd64_v1/jobs-cli",
-    "darwin_arm64": "jobs-cli_darwin_arm64_v8.0/jobs-cli",
+    "darwin_x86_64": "darwin-native_darwin_amd64_v1/jobs-cli",
+    "darwin_arm64": "darwin-native_darwin_arm64_v8.0/jobs-cli",
     "darwin_universal": "jobs-cli-universal_darwin_all/jobs-cli",
     "linux_x86_64": "jobs-cli_linux_amd64_v1/jobs-cli",
     "linux_arm64": "jobs-cli_linux_arm64_v8.0/jobs-cli",
@@ -63,7 +62,7 @@ def report(baseline, current):
         "jobs-cli_darwin_x86_64.tar.gz", "jobs-cli_darwin_arm64.tar.gz",
     }, old_checksums
     for target in ("amd64_v1", "arm64_v8.0"):
-        native = current / f"jobs-cli_darwin_{target}/jobs-cli"
+        native = current / f"darwin-native_darwin_{target}/jobs-cli"
         universal_input = current / f"universal-slices_darwin_{target}/jobs-cli"
         assert native.read_bytes() == universal_input.read_bytes(), target
     rows = [
@@ -83,7 +82,8 @@ def report(baseline, current):
         name = f"jobs-cli_{target}.{'zip' if target.startswith('windows') else 'tar.gz'}"
         new_archive = current / name
         new_binary = (current / binary_path).read_bytes()
-        old_binary = (baseline / binary_path).read_bytes()
+        old_path = binary_path.replace("darwin-native_", "jobs-cli_", 1)
+        old_binary = (baseline / old_path).read_bytes()
         assert executable(new_archive) == new_binary, name
         old_size = "n/a (new target)"
         archive_delta = "n/a"
@@ -102,13 +102,16 @@ def report(baseline, current):
     cask = casks[0].read_text()
     assert "jobs-cli_darwin_universal.tar.gz" in cask, cask
     assert new_checksums["jobs-cli_darwin_universal.tar.gz"] in cask, cask
-    rows += ["", "Generated Homebrew cask selects the universal archive and its verified checksum."]
+    for target in ("linux_x86_64", "linux_arm64"):
+        name = f"jobs-cli_{target}.tar.gz"
+        assert name in cask and new_checksums[name] in cask, name
+    for target in ("darwin_x86_64", "darwin_arm64"):
+        assert f"jobs-cli_{target}.tar.gz" not in cask, target
+    rows += ["", "Generated Homebrew cask selects Universal on macOS and both Linux archives, with verified checksums."]
     for label, directory in (("Baseline", baseline), ("Current", current)):
         rows += ["", f"{label} GoReleaser metadata:", "```json",
                  json.dumps(json.loads((directory / "metadata.json").read_text()), indent=2), "```"]
-    rows += ["", "Toolchain:", "```text",
-             subprocess.check_output(["go", "version"], text=True).strip(),
-             subprocess.check_output(["goreleaser", "--version"], text=True).strip(), "```"]
+    rows += ["", "GoReleaser is pinned to 2.15.4; Go is selected from go.mod."]
     return "\n".join(rows) + "\n"
 
 
