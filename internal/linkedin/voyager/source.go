@@ -249,7 +249,8 @@ func encode(v reflect.Value) (string, error) {
 
 func parseSearch(raw []byte) ([]domain.Job, int, error) {
 	var response struct {
-		Data map[string]json.RawMessage `json:"data"`
+		Data     map[string]json.RawMessage `json:"data"`
+		Included []json.RawMessage          `json:"included"`
 	}
 	if err := json.Unmarshal(raw, &response); err != nil {
 		return nil, 0, joberrors.New(joberrors.APISchemaChanged, "invalid LinkedIn Voyager search response", joberrors.CatAPI, false, err)
@@ -270,9 +271,10 @@ func parseSearch(raw []byte) ([]domain.Job, int, error) {
 	if !found {
 		return nil, 0, joberrors.New(joberrors.APISchemaChanged, "LinkedIn Voyager search response had no job collection", joberrors.CatAPI, false, nil)
 	}
+	entities := buildEntityMap(response.Included)
 	jobs := make([]domain.Job, 0, len(collection.Elements))
 	for _, element := range collection.Elements {
-		job, ok := parseCard(element)
+		job, ok := parseCard(element, entities)
 		if !ok {
 			return nil, 0, joberrors.New(joberrors.APISchemaChanged, "LinkedIn Voyager job card could not be parsed", joberrors.CatAPI, false, nil)
 		}
@@ -281,18 +283,53 @@ func parseSearch(raw []byte) ([]domain.Job, int, error) {
 	return jobs, collection.Paging.Total, nil
 }
 
-func parseCard(raw json.RawMessage) (domain.Job, bool) {
+// buildEntityMap indexes top-level "included" entities by their entityUrn so
+// that "*-prefixed" URN references inside elements can be resolved.
+func buildEntityMap(included []json.RawMessage) map[string]json.RawMessage {
+	entities := make(map[string]json.RawMessage, len(included))
+	for _, raw := range included {
+		var entity struct {
+			EntityURN string `json:"entityUrn"`
+		}
+		if err := json.Unmarshal(raw, &entity); err == nil && entity.EntityURN != "" {
+			entities[entity.EntityURN] = raw
+		}
+	}
+	return entities
+}
+
+func parseCard(raw json.RawMessage, entities map[string]json.RawMessage) (domain.Job, bool) {
+	// Plain URN string reference to an entity in "included".
+	var urnRef string
+	if err := json.Unmarshal(raw, &urnRef); err == nil && urnRef != "" {
+		if entity, ok := entities[urnRef]; ok {
+			return parseCard(entity, entities)
+		}
+		return domain.Job{}, false
+	}
 	var wrapper map[string]json.RawMessage
 	if json.Unmarshal(raw, &wrapper) != nil {
 		return domain.Job{}, false
 	}
-	for _, key := range []string{"jobCard", "jobPostingCard"} {
+	for _, key := range []string{"jobCardUnion", "jobCard", "jobPostingCard"} {
 		if nested := wrapper[key]; nested != nil {
-			return parseCard(nested)
+			return parseCard(nested, entities)
+		}
+	}
+	// "*-prefixed" URN reference, e.g. {"*jobPosting": "urn:li:fsd_jobPosting:123"}.
+	for key, value := range wrapper {
+		if strings.HasPrefix(key, "*") {
+			var urn string
+			if json.Unmarshal(value, &urn) == nil && urn != "" {
+				if entity, ok := entities[urn]; ok {
+					return parseCard(entity, entities)
+				}
+			}
 		}
 	}
 	var card struct {
 		JobPostingTitle    string `json:"jobPostingTitle"`
+		JobPostingURN      string `json:"jobPostingUrn"`
 		Title              string `json:"title"`
 		EntityURN          string `json:"entityUrn"`
 		FormattedLocation  string `json:"formattedLocation"`
@@ -310,10 +347,10 @@ func parseCard(raw json.RawMessage) (domain.Job, bool) {
 	if json.Unmarshal(raw, &card) != nil {
 		return domain.Job{}, false
 	}
-	if card.EntityURN == "" && card.JobPosting.EntityURN == "" && wrapper["jobPosting"] != nil {
-		return parseCard(wrapper["jobPosting"])
+	if card.EntityURN == "" && card.JobPosting.EntityURN == "" && card.JobPostingURN == "" && wrapper["jobPosting"] != nil {
+		return parseCard(wrapper["jobPosting"], entities)
 	}
-	id := jobID(first(card.JobPosting.EntityURN, card.EntityURN))
+	id := jobID(first(card.JobPosting.EntityURN, card.EntityURN, card.JobPostingURN))
 	if id == "" {
 		return domain.Job{}, false
 	}
