@@ -3,3 +3,5 @@
 *.exe
 .tmp-clones/
 /jobs-cli
+/dist/
+__pycache__/

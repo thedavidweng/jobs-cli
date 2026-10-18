@@ -42,3 +42,42 @@ To build the current `main` branch from source instead, use the formula:
 ```shell
 brew install --HEAD thedavidweng/tap/jobs-cli
 ```
+
+## Packaging validation
+
+The Packaging workflow builds two unsigned snapshots from the same source,
+toolchain and version metadata. The baseline omits `-trimpath` and replaces
+Darwin slices with the Universal binary. The current configuration retains both
+slices and Universal. Its seven archives include the unchanged
+`jobs-cli_darwin_universal.tar.gz` filename, which remains the generated Cask's
+download target. Native archive IDs and the Universal archive ID are separate
+so GoReleaser cannot silently select a single-architecture download for the Cask.
+GoReleaser 2.15.4 excludes non-replacing Universal binaries from Casks, even
+with an explicit archive ID. A separate Darwin build feeds the replacing
+Universal binary while the native build remains available for native archives.
+
+The workflow reports raw executable and compressed archive bytes, plus MiB and
+percentage deltas for identical targets. Additional Darwin downloads have no
+archive baseline; comparing them with Universal would misstate the savings.
+Every archive's checksum and embedded executable are verified. Six native
+OS/architecture runners execute the exact archives, including Universal on both
+Mac architectures, and check help, version metadata and an invalid command.
+The `release-snapshot` artifact retains the archives and report for seven days.
+
+To reproduce on a Mac with GoReleaser 2.15.4 and Python 3:
+
+```shell
+mkdir -p dist
+ruby build/package-config.rb baseline dist/baseline.json
+ruby build/package-config.rb current dist/current.json
+HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --config dist/baseline.json
+HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --config dist/current.json
+python3 build/release_size.py dist/baseline dist/current dist/size-report.md
+python3 build/package-smoke.py dist/current
+```
+
+UPX remains disabled. Its optional Linux amd64 experiment still needs native
+startup, peak RSS, exit-status and compressed-size measurements before a
+keep/reject decision. These snapshots do not prove Apple notarization, a
+published release download, or an installed Homebrew Cask. Issue #26 remains
+open until those acceptance requirements and the UPX decision have evidence.

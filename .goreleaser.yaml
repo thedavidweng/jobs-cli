@@ -25,12 +25,36 @@ builds:
       - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
       - -X {{.ModulePath}}/internal/version.Date={{.Date}}
       - -X {{.ModulePath}}/internal/version.BuiltBy=goreleaser
+  # Cask generation only accepts replacing Universal binaries. Use separate
+  # Darwin inputs so replacement does not remove the native download artifacts.
+  - id: universal-slices
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/jobs-cli
+    binary: jobs-cli
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X {{.ModulePath}}/internal/version.Version={{.Version}}
+      - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
+      - -X {{.ModulePath}}/internal/version.Date={{.Date}}
+      - -X {{.ModulePath}}/internal/version.BuiltBy=goreleaser
 
 universal_binaries:
-  - replace: false
+  - id: jobs-cli-universal
+    ids: [universal-slices]
+    replace: true
 
 archives:
-  - formats:
+  - id: native
+    ids: [jobs-cli]
+    formats:
       - tar.gz
     name_template: >-
       {{ .ProjectName }}_
@@ -42,6 +66,10 @@ archives:
       - goos: windows
         formats:
           - zip
+  - id: universal
+    ids: [jobs-cli-universal]
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_darwin_universal"
 
 checksum:
   name_template: checksums.txt
@@ -63,6 +91,7 @@ release:
 
 homebrew_casks:
   - name: jobs-cli
+    ids: [universal]
     binaries:
       - jobs-cli
     repository:
