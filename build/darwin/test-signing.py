@@ -8,7 +8,7 @@ SCRIPT = Path(__file__).with_name('sign-and-notarize.sh')
 
 
 class SigningTest(unittest.TestCase):
-    def run_signing(self, snapshot='false', **overrides):
+    def run_signing(self, snapshot='false', goos='darwin', **overrides):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             mock = '''#!/bin/bash
@@ -16,7 +16,13 @@ printf '%s\\n' "$(basename "$0") $*" >> "$CALL_LOG"
 case "$(basename "$0") $1" in
   'codesign --verify') exit "$VERIFY_EXIT" ;;
   'codesign --display') printf '%s\\n' "Authority=$AUTHORITY" "TeamIdentifier=$TEAM" 'Timestamp=Oct 17, 2026' 'CodeDirectory flags=0x10000(runtime)' >&2 ;;
-  'xcrun notarytool') printf '{"status":"%s"}\\n' "$NOTARY_STATUS" ;;
+  'xcrun notarytool')
+    if [[ "$2" == submit ]]; then
+      printf '{"id":"submission-id","status":"%s"}\\n' "$NOTARY_STATUS"
+      exit "$NOTARY_EXIT"
+    fi
+    printf '{"issues":["notary diagnostic"]}\\n'
+    ;;
 esac
 '''
             for tool in ['codesign', 'xcrun', 'ditto']:
@@ -30,9 +36,9 @@ esac
                        APPLE_API_KEY_ID='TESTKEY', APPLE_API_ISSUER='test-issuer',
                        APPLE_API_KEY_PATH=str(root / 'key.p8'), TEAM='TESTTEAM',
                        AUTHORITY='Developer ID Application: Test (TESTTEAM)',
-                       VERIFY_EXIT='0', NOTARY_STATUS='Accepted')
+                       VERIFY_EXIT='0', NOTARY_STATUS='Accepted', NOTARY_EXIT='0')
             env.update(overrides)
-            result = subprocess.run(['bash', str(SCRIPT), str(root / 'jobs-cli'), snapshot],
+            result = subprocess.run(['bash', str(SCRIPT), str(root / 'jobs-cli'), snapshot, goos],
                                     env=env, text=True, capture_output=True)
             calls = root / 'calls'
             return result, calls.read_text() if calls.exists() else ''
@@ -57,6 +63,26 @@ esac
         result, calls = self.run_signing(NOTARY_STATUS='Invalid')
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('--check-notarization', calls)
+        self.assertIn('notarytool log submission-id', calls)
+        self.assertIn('notary diagnostic', result.stdout)
+
+    def test_failed_submit_prints_result_and_diagnostics_before_failing(self):
+        result, calls = self.run_signing(NOTARY_EXIT='1', NOTARY_STATUS='Invalid')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('"status":"Invalid"', result.stdout)
+        self.assertIn('notarytool log submission-id', calls)
+        self.assertNotIn('--check-notarization', calls)
+
+    def test_native_non_darwin_binaries_do_not_use_apple_credentials(self):
+        for goos in ['linux', 'windows']:
+            result, calls = self.run_signing(goos=goos, APPLE_API_KEY_ID='')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(calls, '')
+
+    def test_explicit_acceptance_mode_signs_snapshot(self):
+        result, calls = self.run_signing(snapshot='true', APPLE_SIGNING_ACCEPTANCE='true')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('notarytool submit', calls)
 
     def test_snapshot_does_not_use_signing_credentials(self):
         result, calls = self.run_signing(snapshot='true', APPLE_API_KEY_ID='')

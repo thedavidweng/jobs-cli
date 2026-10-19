@@ -10,6 +10,11 @@ on:
         description: Release tag, for example v0.1.0
         required: false
         type: string
+      acceptance_only:
+        description: Sign and notarize snapshot archives without publishing a release or tap update
+        required: false
+        default: false
+        type: boolean
 
 permissions: {}
 
@@ -29,6 +34,7 @@ jobs:
       APPLE_TEAM_ID: NCFNX3LJ83
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_SIGNING_ACCEPTANCE: ${{ inputs.acceptance_only == true }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,6 +48,7 @@ jobs:
       - name: Run pre-release tests
         run: go test ./... -race
       - name: Verify Homebrew tap token
+        if: inputs.acceptance_only != true
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
         run: |
@@ -83,11 +90,35 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          version: latest
-          args: release --clean --parallelism 1 --timeout 75m
+          version: v2.15.4
+          args: release --clean --parallelism 1 --timeout 75m ${{ inputs.acceptance_only == true && '--snapshot' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      - name: Verify signed archives
+        run: shasum -a 256 -c checksums.txt
+        working-directory: dist
+      - name: Verify archived Darwin executables
+        run: |
+          set -euo pipefail
+          for archive in dist/jobs-cli_darwin_*.tar.gz; do
+            directory="$(mktemp -d)"
+            tar -xzf "$archive" -C "$directory"
+            codesign --verify --strict --check-notarization -R '=notarized' --verbose=2 "$directory/jobs-cli"
+            "$directory/jobs-cli" --version
+            rm -r "$directory"
+          done
+      - name: Upload signed acceptance archives
+        if: inputs.acceptance_only == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-acceptance
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Remove signing credentials
         if: always()
@@ -98,6 +129,7 @@ jobs:
           fi
 
   go-proxy:
+    if: inputs.acceptance_only != true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

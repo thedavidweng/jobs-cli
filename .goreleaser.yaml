@@ -17,6 +17,8 @@ builds:
       - arm64
     main: ./cmd/jobs-cli
     binary: jobs-cli
+    hooks:
+      post: bash build/darwin/sign-and-notarize.sh "{{ .Path }}" "{{ .IsSnapshot }}" "{{ .Os }}"
     ldflags:
       - -s -w
       - -X {{.ModulePath}}/internal/version.Version={{.Version}}
