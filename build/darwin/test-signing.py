@@ -9,6 +9,38 @@ SCRIPT = Path(__file__).with_name('sign-and-notarize.sh')
 
 
 class SigningTest(unittest.TestCase):
+    def test_archive_verification_checks_each_slice_and_preserves_failure(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / 'jobs-cli_darwin_universal.tar.gz'
+            archive.touch()
+            mock = '''#!/bin/bash
+case "$(basename "$0")" in
+  tar) touch "$4/jobs-cli" ;;
+  lipo) echo 'x86_64 arm64' ;;
+  codesign)
+    printf '%s\\n' "$*" >> "$CALL_LOG"
+    if [[ "$*" == *"--architecture arm64"* ]]; then exit "$ARM_EXIT"; fi
+    ;;
+esac
+'''
+            for tool in ['tar', 'lipo', 'codesign']:
+                path = root / tool
+                path.write_text(mock)
+                path.chmod(0o755)
+            for exit_code in ['0', '3']:
+                calls = root / 'calls'
+                calls.write_text('')
+                result = subprocess.run(
+                    ['bash', str(SCRIPT.with_name('verify-archives.sh')), str(root)],
+                    env=dict(os.environ, PATH=f'{root}:{os.environ["PATH"]}',
+                             CALL_LOG=str(calls), ARM_EXIT=exit_code),
+                    capture_output=True, text=True)
+                self.assertEqual(result.returncode, int(exit_code), result.stderr)
+                self.assertIn('--architecture x86_64', calls.read_text())
+                self.assertIn('--architecture arm64', calls.read_text())
+                self.assertEqual(calls.read_text().count('--check-notarization'), 2)
+
     def test_archive_ids_sign_only_shipped_darwin_executables(self):
         config = json.loads(subprocess.check_output(
             ['ruby', '-ryaml', '-rjson', '-e',

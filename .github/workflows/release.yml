@@ -101,14 +101,7 @@ jobs:
         run: shasum -a 256 -c checksums.txt
         working-directory: dist
       - name: Verify archived Darwin executables
-        run: |
-          set -euo pipefail
-          for archive in dist/jobs-cli_darwin_*.tar.gz; do
-            directory="$(mktemp -d)"
-            tar -xzf "$archive" -C "$directory"
-            codesign --verify --strict --check-notarization -R '=notarized' --verbose=2 "$directory/jobs-cli"
-            rm -r "$directory"
-          done
+        run: bash build/darwin/verify-archives.sh dist
       - name: Upload signed acceptance archives
         if: inputs.acceptance_only == true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -151,14 +144,7 @@ jobs:
           name: signed-acceptance
           path: snapshot
       - name: Verify notarized trust of archived executables
-        run: |
-          set -euo pipefail
-          for archive in snapshot/jobs-cli_darwin_*.tar.gz; do
-            directory="$(mktemp -d)"
-            tar -xzf "$archive" -C "$directory"
-            codesign --verify --strict --check-notarization -R '=notarized' --verbose=2 "$directory/jobs-cli"
-            rm -r "$directory"
-          done
+        run: bash build/darwin/verify-archives.sh snapshot
       - name: Execute native and Universal archives
         run: python3 build/package-smoke.py snapshot
 
