@@ -48,4 +48,5 @@ with tempfile.TemporaryDirectory() as temporary:
             print(target, arguments, result.stdout.strip()[:500])
         failure = subprocess.run([str(binary), "not-a-command"], env=env, capture_output=True, text=True)
         assert failure.returncode != 0, failure
+        assert 'unknown command "not-a-command"' in failure.stderr, failure
         print(target, "unknown command correctly returned", failure.returncode)

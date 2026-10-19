@@ -8,7 +8,7 @@ on:
       - "build/**"
       - "go.mod"
       - "go.sum"
-      - "internal/version/**"
+      - "**.go"
   push:
     branches: [main]
     paths:
@@ -17,7 +17,7 @@ on:
       - "build/**"
       - "go.mod"
       - "go.sum"
-      - "internal/version/**"
+      - "**.go"
   workflow_dispatch:
 
 permissions:
@@ -46,18 +46,21 @@ jobs:
           mkdir -p dist
           ruby build/package-config.rb baseline dist/baseline.json
           ruby build/package-config.rb current dist/current.json
-      - name: Baseline snapshot
+      - name: Install shared GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           version: v2.15.4
-          args: release --snapshot --clean --parallelism 3 --config dist/baseline.json
+          install-only: true
+      - name: Baseline snapshot
+        run: |
+          goreleaser --version > dist/baseline-toolchain.txt
+          goreleaser release --snapshot --clean --parallelism 2 --config dist/baseline.json
         env:
           HOMEBREW_TAP_GITHUB_TOKEN: unused-snapshot
       - name: Current snapshot
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with:
-          version: v2.15.4
-          args: release --snapshot --clean --parallelism 3 --config dist/current.json
+        run: |
+          goreleaser --version > dist/current-toolchain.txt
+          goreleaser release --snapshot --clean --parallelism 2 --config dist/current.json
         env:
           HOMEBREW_TAP_GITHUB_TOKEN: unused-snapshot
       - name: Verify checksums, cask selection and size comparison

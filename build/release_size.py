@@ -47,6 +47,9 @@ def delta(before, after):
 
 
 def report(baseline, current):
+    old_toolchain = (baseline.parent / "baseline-toolchain.txt").read_text().strip()
+    new_toolchain = (current.parent / "current-toolchain.txt").read_text().strip()
+    assert old_toolchain and old_toolchain == new_toolchain, (old_toolchain, new_toolchain)
     old_metadata = json.loads((baseline / "metadata.json").read_text())
     new_metadata = json.loads((current / "metadata.json").read_text())
     for field in ("commit", "version", "tag"):
@@ -111,7 +114,8 @@ def report(baseline, current):
     for label, directory in (("Baseline", baseline), ("Current", current)):
         rows += ["", f"{label} GoReleaser metadata:", "```json",
                  json.dumps(json.loads((directory / "metadata.json").read_text()), indent=2), "```"]
-    rows += ["", "GoReleaser is pinned to 2.15.4; Go is selected from go.mod."]
+    rows += ["", "Actual shared GoReleaser version (baseline == current):", "```text",
+             new_toolchain, "```", "Go is selected from go.mod."]
     return "\n".join(rows) + "\n"
 
 
