@@ -72,14 +72,17 @@ To reproduce on a Mac with GoReleaser 2.15.4 and Python 3:
 mkdir -p dist
 ruby build/package-config.rb baseline dist/baseline.json
 ruby build/package-config.rb current dist/current.json
-HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --config dist/baseline.json
-HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --config dist/current.json
+goreleaser --version > dist/baseline-toolchain.txt
+HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --parallelism 2 --config dist/baseline.json
+goreleaser --version > dist/current-toolchain.txt
+HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --parallelism 2 --config dist/current.json
 python3 build/release_size.py dist/baseline dist/current dist/size-report.md
 python3 build/package-smoke.py dist/current
 ```
 
-UPX remains disabled. Its optional Linux amd64 experiment still needs native
-startup, peak RSS, exit-status and compressed-size measurements before a
-keep/reject decision. These snapshots do not prove Apple notarization, a
-published release download, or an installed Homebrew Cask. Issue #26 remains
-open until those acceptance requirements and the UPX decision have evidence.
+UPX remains disabled. The [native Linux amd64 experiment](linux-upx-experiment.md)
+rejects packing: a roughly 16% matched archive saving increases startup from
+8-9 ms to 365-379 ms and raises peak RSS. These snapshots do not prove Apple
+notarization, a published release download, or an installed Homebrew Cask.
+Issue #26 remains open until the release and installation requirements have
+evidence.
