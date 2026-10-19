@@ -2,7 +2,7 @@
 set -euo pipefail
 
 artifact="${1:?provide the macOS artifact path}"
-if [[ "${3:-darwin}" != darwin ]]; then
+if [[ "${3:?provide the target OS}" != darwin ]]; then
   exit 0
 fi
 if [[ "${2:?provide the GoReleaser snapshot flag}" == true && "${APPLE_SIGNING_ACCEPTANCE:-false}" != true ]]; then
