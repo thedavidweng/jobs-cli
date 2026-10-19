@@ -28,10 +28,13 @@ with tempfile.TemporaryDirectory() as temporary:
         extension = "zip" if goos == "windows" else "tar.gz"
         name = f"jobs-cli_{target}.{extension}"
         assert name in checksums, name
-        binary = root / ("jobs-cli.exe" if goos == "windows" else "jobs-cli")
+        target_root = root / target
+        target_root.mkdir()
+        binary = target_root / ("jobs-cli.exe" if goos == "windows" else "jobs-cli")
         binary.write_bytes(size.executable(directory / name))
         binary.chmod(0o755)
-        env = dict(os.environ, HOME=str(root), USERPROFILE=str(root), XDG_CONFIG_HOME=str(root / "config"))
+        env = dict(os.environ, HOME=str(target_root), USERPROFILE=str(target_root),
+                   XDG_CONFIG_HOME=str(target_root / "config"))
         for arguments in (["--help"], ["--version"], ["version", "--json"]):
             result = subprocess.run([str(binary), *arguments], env=env, capture_output=True, text=True, check=True)
             assert result.stdout.strip(), (target, arguments)
