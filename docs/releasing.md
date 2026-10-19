@@ -16,6 +16,30 @@ Add these secrets in the `thedavidweng/jobs-cli` repository settings:
 Use separate tokens when possible. Never commit or paste token values into the
 repository, workflow files, issues, or logs.
 
+macOS signing additionally requires `APPLE_CERTIFICATE_P12_BASE64`,
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID` and
+`APPLE_API_ISSUER`. The Developer ID Application identity and team are specified
+in the Release workflow. Credentials are imported into a temporary keychain and
+removed after the job.
+
+## Signing acceptance without publication
+
+Dispatch the Release workflow on the branch under test with
+`acceptance_only=true` and leave `tag_name` empty:
+
+```shell
+gh workflow run release.yml --ref <branch> -f acceptance_only=true
+```
+
+This signs and notarizes the two native Darwin executables and the final
+Universal executable, produces snapshot archives and uploads `signed-acceptance`
+for seven days. It skips release publication, tap access and Go proxy updates.
+Independent Intel and Apple Silicon jobs verify notarized trust and execute the
+native and Universal archives. A failed Apple submission prints its JSON result
+and fetches the detailed notarization log when a submission ID is available.
+Acceptance snapshots do not prove the published release or Homebrew installation
+path; retain the producer quarantine workaround until those are verified.
+
 ## Release flow
 
 1. Push conventional commits to `main`.
