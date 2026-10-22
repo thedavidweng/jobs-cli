@@ -36,6 +36,9 @@ jobs:
           browser_path="$(command -v google-chrome)"
           echo "JOBS_TEST_BROWSER=$browser_path" >> "$GITHUB_ENV"
       - run: mise run check
+      - name: Verify signing release gate
+        if: runner.os != 'Windows'
+        run: python3 build/darwin/test-signing.py
       - run: git diff --exit-code
 
   workflow-lint:
