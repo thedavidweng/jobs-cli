@@ -13,7 +13,7 @@ run = "go test ./..."
 run = "gofumpt -extra -w ."
 
 [tasks.lint]
-run = "mise exec go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint@2.15.0 -- golangci-lint run"
+run = 'mise exec -- "$(mise where go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint@2.15.0)/bin/golangci-lint" run'
 
 [tasks.check]
 run = ["mise run fmt", "mise run build ::: test ::: lint"]
