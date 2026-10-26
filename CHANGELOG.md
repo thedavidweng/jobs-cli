@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.1.2](https://github.com/thedavidweng/jobs-cli/compare/v2.1.1...v2.1.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **ci:** select the exact source-built linter binary ([65f4165](https://github.com/thedavidweng/jobs-cli/commit/65f4165ac84b38583b6ecbd0e523d017601f2b4e))
+* **homebrew:** remove quarantine bypass from cask generation ([654ba3b](https://github.com/thedavidweng/jobs-cli/commit/654ba3bbb00954aa2567e9b552aa64e669ccc7c9))
+* **packaging:** isolate executed archive paths per target ([bc8686a](https://github.com/thedavidweng/jobs-cli/commit/bc8686a4143bcecc28310b3364ed2a75fd760b9e))
+* **packaging:** retain Linux cask downloads and invoke pinned action ([a8c541a](https://github.com/thedavidweng/jobs-cli/commit/a8c541adf09873d79c204b5102d3423d212c73f3))
+* **packaging:** verify actual toolchain and diagnostic evidence ([f61a8ab](https://github.com/thedavidweng/jobs-cli/commit/f61a8abc4325037b472f78c0911f3b4f16107932))
+* **release:** retain notarization rejection diagnostics and add acceptance mode ([90c80bd](https://github.com/thedavidweng/jobs-cli/commit/90c80bd7425cae7219f0de672d93f3f1ec305d6d))
+* **release:** sign and notarize macOS binaries ([18ccf33](https://github.com/thedavidweng/jobs-cli/commit/18ccf339f47a778eab4155df1844eb6042a4d853))
+* **release:** sign and notarize macOS binaries ([a8bbd57](https://github.com/thedavidweng/jobs-cli/commit/a8bbd57f4c62996a2660d0b17f1f1a995027ce15))
+* **release:** verify all shipped Darwin archives on native runners ([f8395f7](https://github.com/thedavidweng/jobs-cli/commit/f8395f7688e074c77537f9ff24e0c1520e53f076))
+* **release:** verify notarization explicitly for every Mach-O slice ([24a4706](https://github.com/thedavidweng/jobs-cli/commit/24a47069147751491acbc95ae72cde42dc12d6f2))
+
+
+### Documentation
+
+* **release:** explain no-publish signing acceptance ([5f04b08](https://github.com/thedavidweng/jobs-cli/commit/5f04b085af68aa0bd9516b70e89f120e00952f1e))
+* **release:** record native Linux UPX rejection evidence ([dc0da5a](https://github.com/thedavidweng/jobs-cli/commit/dc0da5a63bb46bef5df57673898345118e26cf33))
+
 ## [2.1.1](https://github.com/thedavidweng/jobs-cli/compare/v2.1.0...v2.1.1) (2026-10-11)
 
 
