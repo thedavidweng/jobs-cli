@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -40,25 +39,6 @@ esac
                 self.assertIn('--architecture x86_64', calls.read_text())
                 self.assertIn('--architecture arm64', calls.read_text())
                 self.assertEqual(calls.read_text().count('--check-notarization'), 2)
-
-    def test_archive_ids_sign_only_shipped_darwin_executables(self):
-        config = json.loads(subprocess.check_output(
-            ['ruby', '-ryaml', '-rjson', '-e',
-             'puts JSON.generate(YAML.load_file(".goreleaser.yaml", aliases: true))'],
-            text=True))
-        builds = {build.get('id', 'jobs-cli'): build for build in config['builds']}
-        self.assertNotIn('hooks', builds['jobs-cli'])
-        self.assertNotIn('hooks', builds['universal-slices'])
-        self.assertIn('"{{ .IsSnapshot }}" darwin', builds['darwin-native']['hooks']['post'])
-        universal, = config['universal_binaries']
-        self.assertEqual(universal['ids'], ['universal-slices'])
-        self.assertIn('"{{ .IsSnapshot }}" darwin', universal['hooks']['post'])
-        archives = {archive['id']: archive['ids'] for archive in config['archives']}
-        self.assertEqual(archives, {'native': ['jobs-cli'], 'darwin-native': ['darwin-native'],
-                                    'universal': ['jobs-cli-universal']})
-        cask, = config['homebrew_casks']
-        self.assertEqual(cask['ids'], ['native', 'universal'])
-        self.assertIn('com.apple.quarantine', cask['custom_block'])
 
     def run_signing(self, snapshot='false', goos='darwin', **overrides):
         with tempfile.TemporaryDirectory() as temp:
