@@ -99,8 +99,6 @@ func requireErrorCode(t *testing.T, err error, want joberrors.Code) *joberrors.E
 	return e
 }
 
-func floatPtr(v float64) *float64 { return &v }
-
 func TestSearchSendsPinnedMobileClientRequest(t *testing.T) {
 	r := &recorder{t: t, respond: func(int) *http.Response { return fixtureResponse(t, "search.json") }}
 	if _, err := newSource(r).Search(context.Background(), &domain.SearchRequest{
@@ -446,7 +444,7 @@ func TestSearchCompensationVariants(t *testing.T) {
 			name: "open ended minimum",
 			body: `{"data":{"jobSearch":{"pageInfo":{"nextCursor":null},"results":[{"job":{"key":"a","title":"Job A","compensation":{"baseSalary":{"unitOfWork":"MONTH","range":{"min":7000}},"currencyCode":"USD"}}}]}}}`,
 			want: &domain.Compensation{
-				Amounts:  []domain.CompensationAmount{{Kind: "min", Min: floatPtr(7000)}},
+				Amounts:  []domain.CompensationAmount{{Kind: "min", Min: new(float64(7000))}},
 				Currency: "USD", Interval: domain.IntervalMonth,
 			},
 		},
@@ -454,7 +452,7 @@ func TestSearchCompensationVariants(t *testing.T) {
 			name: "capped maximum",
 			body: `{"data":{"jobSearch":{"pageInfo":{"nextCursor":null},"results":[{"job":{"key":"a","title":"Job A","compensation":{"baseSalary":{"unitOfWork":"WEEK","range":{"max":2000}},"currencyCode":"USD"}}}]}}}`,
 			want: &domain.Compensation{
-				Amounts:  []domain.CompensationAmount{{Kind: "max", Max: floatPtr(2000)}},
+				Amounts:  []domain.CompensationAmount{{Kind: "max", Max: new(float64(2000))}},
 				Currency: "USD", Interval: domain.IntervalWeek,
 			},
 		},
@@ -462,7 +460,7 @@ func TestSearchCompensationVariants(t *testing.T) {
 			name: "unknown interval stays explicit",
 			body: `{"data":{"jobSearch":{"pageInfo":{"nextCursor":null},"results":[{"job":{"key":"a","title":"Job A","compensation":{"baseSalary":{"unitOfWork":"QUARTER","range":{"min":10,"max":20}},"currencyCode":"USD"}}}]}}}`,
 			want: &domain.Compensation{
-				Amounts:  []domain.CompensationAmount{{Kind: "range", Min: floatPtr(10), Max: floatPtr(20)}},
+				Amounts:  []domain.CompensationAmount{{Kind: "range", Min: new(float64(10)), Max: new(float64(20))}},
 				Currency: "USD", Interval: domain.IntervalUnknown,
 			},
 		},

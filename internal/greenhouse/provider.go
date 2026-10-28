@@ -407,7 +407,7 @@ func parseBoardURL(raw string) (token, jobID string) {
 		return "", ""
 	}
 	segments := make([]string, 0, 6)
-	for _, segment := range strings.Split(strings.Trim(parsed.Path, "/"), "/") {
+	for segment := range strings.SplitSeq(strings.Trim(parsed.Path, "/"), "/") {
 		if segment != "" {
 			segments = append(segments, segment)
 		}
