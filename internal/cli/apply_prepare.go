@@ -355,8 +355,7 @@ func attachmentFromFile(kind, path string) (domain.Attachment, *joberrors.Error)
 func dedupeAttachments(attachments []domain.Attachment) []domain.Attachment {
 	seen := map[string]bool{}
 	out := make([]domain.Attachment, 0, len(attachments))
-	for i := len(attachments) - 1; i >= 0; i-- {
-		attachment := attachments[i]
+	for _, attachment := range slices.Backward(attachments) {
 		key := attachment.Kind
 		if seen[key] {
 			continue

@@ -49,7 +49,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return t.limit(resp, err)
 	}
 	var lastResp *http.Response
-	for attempt := 0; attempt < attempts; attempt++ {
+	for attempt := range attempts {
 		cloned := req.Clone(req.Context())
 		resp, err := t.Base.RoundTrip(cloned)
 		if err != nil {

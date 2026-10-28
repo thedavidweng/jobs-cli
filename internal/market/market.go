@@ -7,6 +7,7 @@ package market
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -117,8 +118,8 @@ func asciiLetters(s string, minLen, maxLen int) bool {
 // Bare cities infer nothing; there is no city table.
 func FromLocation(location string) (string, bool) {
 	parts := strings.Split(location, ",")
-	for i := len(parts) - 1; i >= 0; i-- {
-		suffix := normalize(parts[i])
+	for _, part := range slices.Backward(parts) {
+		suffix := normalize(part)
 		if suffix == "" {
 			continue
 		}

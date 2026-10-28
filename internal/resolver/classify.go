@@ -256,7 +256,7 @@ func stripTracking(values url.Values) url.Values {
 
 func pathSegments(path string) []string {
 	segments := make([]string, 0, 4)
-	for _, part := range strings.Split(path, "/") {
+	for part := range strings.SplitSeq(path, "/") {
 		if part != "" {
 			segments = append(segments, part)
 		}
