@@ -49,21 +49,6 @@ jobs:
           cache: false
       - name: Run pre-release tests
         run: go test ./... -race
-      - name: Verify Homebrew tap token
-        if: inputs.acceptance_only != true
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error title=Missing HOMEBREW_TAP_GITHUB_TOKEN::Add a token with contents:write access to thedavidweng/homebrew-tap."
-            exit 1
-          fi
-          can_push="$(gh api repos/thedavidweng/homebrew-tap --jq '.permissions.push' 2>/dev/null || echo false)"
-          if [ "$can_push" != true ]; then
-            echo "::error title=Invalid HOMEBREW_TAP_GITHUB_TOKEN::The token must have write access to thedavidweng/homebrew-tap."
-            exit 1
-          fi
       - name: Prepare Developer ID signing and notarization
         env:
           APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
@@ -96,7 +81,6 @@ jobs:
           args: release --clean --parallelism 1 --timeout 75m ${{ inputs.acceptance_only == true && '--snapshot' || '' }}
         env:
           GITHUB_TOKEN: ${{ inputs.acceptance_only != true && secrets.GITHUB_TOKEN || '' }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ inputs.acceptance_only != true && secrets.HOMEBREW_TAP_GITHUB_TOKEN || 'unused-snapshot' }}
       - name: Verify signed archives
         run: shasum -a 256 -c checksums.txt
         working-directory: dist

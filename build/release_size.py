@@ -100,17 +100,6 @@ def report(baseline, current):
             f"{delta(len(old_binary), len(new_binary))} | {old_size} | "
             f"{new_archive.stat().st_size} | {archive_delta} |"
         )
-    casks = list(current.glob("**/jobs-cli.rb"))
-    assert len(casks) == 1, casks
-    cask = casks[0].read_text()
-    assert "jobs-cli_darwin_universal.tar.gz" in cask, cask
-    assert new_checksums["jobs-cli_darwin_universal.tar.gz"] in cask, cask
-    for target in ("linux_x86_64", "linux_arm64"):
-        name = f"jobs-cli_{target}.tar.gz"
-        assert name in cask and new_checksums[name] in cask, name
-    for target in ("darwin_x86_64", "darwin_arm64"):
-        assert f"jobs-cli_{target}.tar.gz" not in cask, target
-    rows += ["", "Generated Homebrew cask selects Universal on macOS and both Linux archives, with verified checksums."]
     for label, directory in (("Baseline", baseline), ("Current", current)):
         rows += ["", f"{label} GoReleaser metadata:", "```json",
                  json.dumps(json.loads((directory / "metadata.json").read_text()), indent=2), "```"]
