@@ -10,10 +10,8 @@ Add these secrets in the `thedavidweng/jobs-cli` repository settings:
 
 - `RELEASE_PLEASE_TOKEN`: a GitHub token that can create release pull requests,
   tags, and releases in this repository.
-- `HOMEBREW_TAP_GITHUB_TOKEN`: a GitHub token with `contents:write` access to
-  `thedavidweng/homebrew-tap`.
 
-Use separate tokens when possible. Never commit or paste token values into the
+Never commit or paste token values into the
 repository, workflow files, issues, or logs.
 
 macOS signing additionally requires `APPLE_CERTIFICATE_P12_BASE64`,
@@ -47,7 +45,7 @@ path; retain the producer quarantine workaround until those are verified.
 3. Merge that pull request when the release is approved.
 4. The generated `v*` tag starts the Release workflow.
 5. GoReleaser builds archives for macOS, Linux, and Windows, creates the GitHub
-   Release, and updates `Casks/jobs-cli.rb` in `homebrew-tap`.
+   Release. The Homebrew tap checks the release and updates its cask separately.
 6. In parallel, the Release workflow requests the new tag from
    `proxy.golang.org`, so `go install …/cmd/jobs-cli@latest`, the command in
    the release notes and the README, resolves to it right away.
@@ -73,14 +71,10 @@ The Packaging workflow builds two unsigned snapshots from the same source,
 toolchain and version metadata. The baseline omits `-trimpath` and replaces
 Darwin slices with the Universal binary. The current configuration retains both
 slices and Universal. Its seven archives include the unchanged
-`jobs-cli_darwin_universal.tar.gz` filename, which remains the generated Cask's
-download target. Native archive IDs and the Universal archive ID are separate
-so GoReleaser cannot silently select a single-architecture download for the Cask.
-The Cask also retains its existing Linux amd64 and arm64 downloads. Native
-Darwin archives use a separate ID to exclude them from Cask selection.
-GoReleaser 2.15.4 excludes non-replacing Universal binaries from Casks, even
-with an explicit archive ID. A separate Darwin build feeds the replacing
-Universal binary while the native build remains available for native archives.
+`jobs-cli_darwin_universal.tar.gz` filename used by the Homebrew cask. The
+Linux amd64 and arm64 archives also retain their existing names. A separate
+Darwin build feeds the replacing Universal binary while the native build
+remains available for native archives.
 
 The workflow reports raw executable and compressed archive bytes, plus MiB and
 percentage deltas for identical targets. Additional Darwin downloads have no
@@ -97,9 +91,9 @@ mkdir -p dist
 ruby build/package-config.rb baseline dist/baseline.json
 ruby build/package-config.rb current dist/current.json
 goreleaser --version > dist/baseline-toolchain.txt
-HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --parallelism 2 --config dist/baseline.json
+goreleaser release --snapshot --clean --parallelism 2 --config dist/baseline.json
 goreleaser --version > dist/current-toolchain.txt
-HOMEBREW_TAP_GITHUB_TOKEN=unused goreleaser release --snapshot --clean --parallelism 2 --config dist/current.json
+goreleaser release --snapshot --clean --parallelism 2 --config dist/current.json
 python3 build/release_size.py dist/baseline dist/current dist/size-report.md
 python3 build/package-smoke.py dist/current
 ```

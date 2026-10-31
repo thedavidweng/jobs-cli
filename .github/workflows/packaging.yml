@@ -55,15 +55,11 @@ jobs:
         run: |
           goreleaser --version > dist/baseline-toolchain.txt
           goreleaser release --snapshot --clean --parallelism 2 --config dist/baseline.json
-        env:
-          HOMEBREW_TAP_GITHUB_TOKEN: unused-snapshot
       - name: Current snapshot
         run: |
           goreleaser --version > dist/current-toolchain.txt
           goreleaser release --snapshot --clean --parallelism 2 --config dist/current.json
-        env:
-          HOMEBREW_TAP_GITHUB_TOKEN: unused-snapshot
-      - name: Verify checksums, cask selection and size comparison
+      - name: Verify checksums and size comparison
         run: |
           python3 build/release_size.py dist/baseline dist/current dist/size-report.md
           cat dist/size-report.md >> "$GITHUB_STEP_SUMMARY"

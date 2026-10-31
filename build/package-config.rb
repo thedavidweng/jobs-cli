@@ -23,6 +23,5 @@ if mode == "baseline"
   archive.delete("ids")
   archive["id"] = "default"
   config["archives"] = [archive]
-  config.fetch("homebrew_casks").each { |cask| cask["ids"] = ["default"] }
 end
 File.write(output, JSON.pretty_generate(config))
