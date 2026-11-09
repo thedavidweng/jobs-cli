@@ -8,8 +8,10 @@ Release Please pull request is merged and its `v*` tag is processed.
 
 Add these secrets in the `thedavidweng/jobs-cli` repository settings:
 
-- `RELEASE_PLEASE_TOKEN`: a GitHub token that can create release pull requests,
-  tags, and releases in this repository.
+- `RELEASE_APP_PRIVATE_KEY`: the private key of the `thedavidweng-release`
+  GitHub App. With the `RELEASE_APP_ID` repository variable, the shared
+  release-please workflow uses it to mint a short-lived token for release pull
+  requests, tags, and releases.
 
 Never commit or paste token values into the
 repository, workflow files, issues, or logs.
